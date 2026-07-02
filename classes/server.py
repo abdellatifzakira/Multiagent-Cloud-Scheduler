@@ -114,7 +114,20 @@ class Server:
   def check_active_vms(self):
     for vm in self.vms.values():
       if vm.status == 1:
-        print(f"VM {vm.status} is active on server {self.id} hosting task {vm.hosted_task.id}")
+        print(f"VM {vm.id} : is active on server {self.id}")
+      else :
+        print(f"VM {vm.id} : is inactive on server {self.id}")
+  def activate_vms(self):
+    for vm in self.vms.values():
+      vm.status = 1
+  
+  def deactivate_vms(self):
+    for vm in self.vms.values():
+      vm.status = 0
+  
+  def toggle_vm_status(self, vm_id, state=1):
+    if vm_id in self.vms:
+      self.vms[vm_id].status = state
 
 # ─────────────────────────────────────────────
 # QUICK TEST

@@ -4,6 +4,7 @@ from classes.vm import Vm
 from classes.server import Server
 from classes.server_farm import Server_Farm
 from utilities.ready_tasks_queue_generator import queue_generator
+from baselines.RoundRobin import RoundRobinScheduler
 import igraph as ig
 import random
 import time
@@ -17,7 +18,7 @@ def print_dag(job):
         else:
             print(f"    Task {task_id} → (leaf)")
 
-job_count = 2
+job_count = 3
 num_tasks = 5          # fixed number of tasks per job
 jobs = []
 
@@ -84,8 +85,16 @@ ready_queue = queue_generator(jobs, priority="fifo")
 print("\nReady tasks queue (FIFO):")
 for task in ready_queue:
     print(f"  Task {task.id} from Job {task.job_id} | runtime: {task.runtime:.2f}")
-ready_queue = queue_generator(jobs, priority="runtime")
-print("\nReady tasks queue (runtime):")
-for task in ready_queue:
-    print(f"  Task {task.id} from Job {task.job_id} | runtime: {task.runtime:.2f}")
+
+server_farm = Server_Farm(id=1, graph=ig.Graph(directed=True), servers=[], num_servers=2)
+server_1 = Server(id=1, server_farm_id=1, vms=[Vm(id=1, cpu=0.5, ram=0.5), Vm(id=2, cpu=0.3, ram=0.3)], c_cpu=1.0, c_ram=1.0, alpha=0.5, beta=0.3)
+server_2 = Server(id=2, server_farm_id=1, vms=[Vm(id=3, cpu=0.4, ram=0.4), Vm(id=4, cpu=0.2, ram=0.2)], c_cpu=1.0, c_ram=1.0, alpha=0.6, beta=0.4)
+server_farm.servers = {1: server_1, 2: server_2}
+server_1.activate_vms()
+server_1.check_active_vms()
+server_2.activate_vms()
+server_2.check_active_vms()
+
+
+
 
