@@ -17,8 +17,8 @@ class Server:
         optimal_utilization_rate: float = 0.75
     ):
         if id is None :
-            self.id = self._server_count
-            self._server_count +=1 
+            self.id = Server._server_count
+            Server._server_count +=1 
         else :
             self.id = id
         self.server_farm_id = server_farm_id
