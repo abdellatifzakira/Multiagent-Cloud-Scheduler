@@ -8,7 +8,7 @@ class RoundRobinScheduler:
         for _ in range(n):
             server = self.server_list[self.pointer]
             self.pointer = (self.pointer + 1) % n
-            success, _ = server.host_task_in_server(task)
-            if success:
-                return server.id
-        return -1  # rejected
+            success = server.host_task_in_server(task)
+            if not success:
+                return False  
+        return success  

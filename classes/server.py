@@ -1,5 +1,7 @@
 import math
 
+from numpy import empty
+
 class Server:
   def __init__(
     self,
@@ -44,9 +46,8 @@ class Server:
   # and Task Scheduling for Cloud Service Providers".
   @property
   def cpu_utilization_rate(self):
-    total_vms_cpu = sum(vm.cpu for vm in self.vms.values() if vm.status == 1) #一个包含所有虚拟机的字典（假设虚拟机对象以某种方式存储在 vms 属性中）
-    #获取每个虚拟机的 CPU 数量（假设 cpu 属性在虚拟机对象中定义） ，筛选出状态为 1 的虚拟机，通常 1 表示虚拟机正在运行或激活中，计算所有激活虚拟机的 CPU 总量。
-    cpu_utilization_rate = total_vms_cpu / self.c_cpu  #系统的总 CPU 量（假设这是一个系统总 CPU 数量的属性）。
+    total_vms_cpu = sum(vm.used_cpu for vm in self.vms.values() if vm.status == 1) 
+    cpu_utilization_rate = total_vms_cpu / self.c_cpu 
     return round(cpu_utilization_rate, 2)
 
   @property
@@ -77,28 +78,30 @@ class Server:
     return {vm.id: vm for vm in vms}
   
   def host_task_in_server(self, task):
-    available_vm_id = next((vm.id for vm in self.vms.values() if vm.status == 0), None)
+    available_vm_id = [vm.id for vm in self.vms.values() if vm.status == 0]
+    
     if available_vm_id: # take the available vm id
-      verdict = self.check_cpu_mem_constraint(task, available_vm_id) # check task CPU and MEM constraint
-      if verdict: # if task can be hosted without violating VM and MEM limits, host the task on VM
-        self.vms[available_vm_id].host_task(task)
-        task.vm_id = available_vm_id
-        task.server_id = self.id
-        task.server_farm_id = self.server_farm_id
-        
-        # perform check if the task actually exists in the hosted VM
-        #print("vm id that host the task: ", self.vms[available_vm_id].id)
-        
-        
-        self.current_cpu_usage += self.vms[available_vm_id].cpu
-        self.current_ram_usage += self.vms[available_vm_id].ram
-        return True, task # True for successful task hosting
-      return False # False for rejected task
-  
+      for vm_id in available_vm_id:
+        verdict = self.check_cpu_mem_constraint(task, vm_id) # check task CPU and MEM constraint
+        if verdict: # if task can be hosted without violating VM and MEM limits, host the task on VM
+          self.vms[vm_id].host_task(task)
+          task.vm_id = vm_id
+          task.server_id = self.id
+          task.server_farm_id = self.server_farm_id
+          self.vms[vm_id].status = 1  # Mark the VM as occupied
+          
+          # perform check if the task actually exists in the hosted VM
+          #print("vm id that host the task: ", self.vms[vm_id].id)
+          
+          
+          self.current_cpu_usage += self.vms[vm_id].cpu
+          self.current_ram_usage += self.vms[vm_id].ram
+          return True, task # True for successful task hosting
+    return False # False for unsuccessful task hosting
   # check if the VM has sufficient CPU or RAM to host the task without overburdening VM resource constraint
   def check_cpu_mem_constraint(self, task, vm_id):
     vm = self.vms[vm_id]
-    if (task.cpu + vm.cpu > 1) or (task.ram + vm.ram > 1):
+    if (task.cpu + vm.used_cpu > vm.cpu) or (task.ram + vm.used_ram > vm.ram):
       return False
     return True
   
@@ -113,19 +116,19 @@ class Server:
   
   def check_active_vms(self):
     for vm in self.vms.values():
-      if vm.status == 1:
+      if vm.status == 0:
         print(f"VM {vm.id} : is active on server {self.id}")
       else :
         print(f"VM {vm.id} : is inactive on server {self.id}")
   def activate_vms(self):
     for vm in self.vms.values():
-      vm.status = 1
+      vm.status = 0
   
   def deactivate_vms(self):
     for vm in self.vms.values():
-      vm.status = 0
+      vm.status = 1
   
-  def toggle_vm_status(self, vm_id, state=1):
+  def toggle_vm_status(self, vm_id, state=0):
     if vm_id in self.vms:
       self.vms[vm_id].status = state
 

@@ -19,7 +19,6 @@ class Task:
     self.status = status # -1: rejected, 0: finished, 1: ready, 2: running, 3: initialized.
     self.runtime = runtime
     self.arrival_time = None
-    self.departure_time = None
     self.start_time = None
     self.end_time = None
     #self.deadline = self.start_time + self.runtime

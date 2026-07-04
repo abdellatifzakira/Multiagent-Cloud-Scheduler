@@ -1,6 +1,6 @@
 from collections import deque
 
-def queue_generator(jobs, priority="fifo"):
+def queue_creator(jobs, priority="fifo"):
     """
     Generate an ordered queue of ready tasks from a list of jobs.
 
