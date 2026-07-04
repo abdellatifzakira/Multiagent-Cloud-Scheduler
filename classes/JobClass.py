@@ -256,9 +256,6 @@ class Job:
             return None
         max_ram = max(rams.items(), key=lambda item: item[1])
         return max_ram 
-    
-        
-        
 
 
 # QUICK TESTS :
