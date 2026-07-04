@@ -1,5 +1,5 @@
 import igraph as ig
-from TaskClass import Task
+from classes.TaskClass import Task
 
 class Job:
     _counter = 0

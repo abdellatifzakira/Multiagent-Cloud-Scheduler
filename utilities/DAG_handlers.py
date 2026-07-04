@@ -1,29 +1,30 @@
 from collections import deque
+import igraph as ig
 
-def queue_creator(jobs, priority="fifo"):
-    """
-    Generate an ordered queue of ready tasks from a list of jobs.
+def get_dag_levels(graph: ig.Graph):
+    in_degree = [graph.degree(v, mode="in") for v in range(graph.vcount())]
 
-    Args:
-        jobs     : list of Job objects
-        priority : ordering strategy for the queue
-                   "fifo"     — insertion order (default)
-                   "deadline" — earliest job deadline first
-                   "runtime"  — shortest task runtime first (SJF)
+    queue = deque([v for v in range(graph.vcount()) if in_degree[v] == 0])
 
-    Returns:
-        deque of Task objects, ordered by chosen priority
-    """
-    ready_tasks = []
+    levels = []
 
-    for job in jobs:
-        tasks = job.get_first_ready_tasks()
-        for task in tasks:
-            ready_tasks.append((job, task))
+    while queue:
+        current_level = list(queue)
+        levels.append(current_level)
 
-    if priority == "deadline":
-        ready_tasks.sort(key=lambda x: x[0].deadline)
-    elif priority == "runtime":
-        ready_tasks.sort(key=lambda x: x[1].runtime)
-    # fifo: no sort, insertion order preserved
-    return deque(task for job, task in ready_tasks)
+        next_queue = deque()
+
+        for node in current_level:
+            for child in graph.neighbors(node, mode="out"):
+                in_degree[child] -= 1
+                if in_degree[child] == 0:
+                    next_queue.append(child)
+
+        queue = next_queue
+
+    return levels
+    
+    
+
+def get_dag_level(dag : ig.Graph, level):
+    return get_dag_levels(dag)[level]

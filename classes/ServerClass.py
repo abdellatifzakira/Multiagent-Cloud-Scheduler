@@ -1,6 +1,6 @@
 import math
-from VmClass import Vm
-from TaskClass import Task
+from classes.VmClass import Vm
+from classes.TaskClass import Task
 
 class Server:
     _server_count = 0
