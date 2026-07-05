@@ -1,6 +1,15 @@
 import math
-from classes.VmClass import Vm
-from classes.TaskClass import Task
+
+try :
+    from classes.VmClass import Vm
+    from classes.TaskClass import Task
+    from classes.JobClass import Job
+except ModuleNotFoundError: 
+    from VmClass import Vm
+    from TaskClass import Task
+    from JobClass import Job
+    
+
 
 class Server:
     _server_count = 0
@@ -67,6 +76,7 @@ class Server:
     def is_available(self):
         return len(self.get_idle_vms()) > 0
 
+    # Basic Hosting : first in list, first served => to be enhanced
     def host_task_in_server(self, task):
         for vm in self.get_idle_vms():
             if vm.check_req_constraint(task):
@@ -75,8 +85,9 @@ class Server:
         return False
     
     def release_task_from_server(self, task_key):
-        hosting_vm = self.vms[self.hosted_tasks[task_key]]
-        return hosting_vm.release_task()
+        return self.vms[self.hosted_tasks[task_key]].release_task()
+    
+
     
     def cpu_utilization(self):
         vms =  self.vms.values()
@@ -87,6 +98,8 @@ class Server:
     def get_power_consumption(self):
         cpu_utilization = self.cpu_utilization()
         return round(cpu_utilization*self.alpha + self.static_power, ndigits=3)
+    
+
 
 
 # QUICK TESTS :
@@ -107,11 +120,13 @@ if __name__ == "__main__":
         runtime=20
     )
     
-    task_1 =  server.host_task_in_server(task=task_1)
-    for vm in server.get_idle_vms() :
-        print(f"VM Number : {vm.id} is idle") # expected something like 1,2
-    print(server.is_available()) # expected True 
-    print(f"{task_1.status = }") # expecting 2
+    if server.host_task_in_server(task=task_1) :
+        for vm in server.get_idle_vms() :
+            print(f"VM Number : {vm.id} is idle") # expected something like 1,2
+        print(server.is_available()) # expected True 
+        print(f"{task_1.status = }") # expecting 2
+    else :
+        print("FAILED TO HOST TASK 1 IN SERVER")
     
     
     task_2 = Task(
@@ -123,21 +138,97 @@ if __name__ == "__main__":
         runtime=20
     )
     
-    task_2 =  server.host_task_in_server(task=task_2)
-    for vm in server.get_idle_vms() :
-        print(f"VM Number : {vm.id} is idle") # expected something like 2
+    if server.host_task_in_server(task=task_2) :
+        for vm in server.get_idle_vms() :
+            print(f"VM Number : {vm.id} is idle") # expected something like 2
+    else :
+        print("FAILED TO HOST TASK 2 IN SERVER")
         
     print(f"Total CPU Utiliazation = {server.cpu_utilization()} | Available CPU capcity = {server.c_cpu}")
     
     print(f"Total Power Consumption = {server.get_power_consumption()}")
     
-    print("RELEASING A TASK, FINISHING IT")
-    task_finished = server.release_task_from_server((0,0))
+    print("RELEASING A TASK 1, FINISHING IT")
+    server.release_task_from_server((0,0)) # task 1 released <==> finished
     
-    print(f"{task_finished.status = }")
+    print(f"{task_2.status = }") # expected to be 2 : runining
+    print(f"{task_1.status = }") # expected to be 0 : finished
     
     for vm in server.get_idle_vms() :
         print(f"VM Number : {vm.id} is idle") # expected something 0, 2
+        
+    
+    # testing a non-hostable task 
+    
+    impossible_task = Task(
+        id = 1,
+        job_id= 0,
+        cpu=0.9, # high cpu usage
+        ram=0.1,
+        status=3,
+        runtime=20
+    )
+    
+    if server.host_task_in_server(task=impossible_task) :
+        for vm in server.get_idle_vms() :
+            print(f"VM Number : {vm.id} is idle") # expected something like 1,2
+        print(server.is_available()) # expected True 
+    else :
+        print(f"FAILED TO HOST TASK IN SERVER !")
+    
+    print(f"{impossible_task.status = }") # expecting 3
+    
+    
+    
+    # testing cross task notification :
+    
+    for vm in server.get_idle_vms() :
+            print(f"VM Number : {vm.id} is idle")
+            
+            
+    
+    linked_job = Job()
+    
+    linked_job = linked_job.spawn_job(
+        num_tasks= 4,
+        cpu_req= [0.01, 0.03, 0.05, 0.03],
+        ram_req= [0.01, 0.01, 0.09, 0.03],
+        runtime= [10, 10, 25, 10],
+        data_transfer_weights= {
+         (0,1) : 1,
+         (0,2) : 2,
+         (1,3) : 3
+        }
+    )
+    print("linked_job created successfuly")
+    
+    state = {
+        0 : "FINISHED",
+        1 : "READY",
+        2 : "RUNING",
+        3 : "INITIALIZED"
+    }
+    for task in linked_job.tasks.values() :
+        print(f"TASK ID : {task.id} | STATUS : {state[task.status]}")
+    print("="*25)
+    # trying to host the parent task
+    if server.host_task_in_server(linked_job.tasks[0]) :
+        for task in linked_job.tasks.values() :
+            print(f"TASK ID : {task.id} | STATUS : {state[task.status]}")
+    print("="*25)
+    # releasing the hosted task : (id = 0, job_id = linked_job id)
+    if server.release_task_from_server((0, linked_job.id)) :
+        for task in linked_job.tasks.values() :
+            print(f"===== TASK ID : {task.id}=====\nChildren : {[c.id for c in task.children]}\nPARENTS : {[p.id for p in task.parents]}\nSTATUS : {state[task.status]}")
+    
+    
+    
+        
+    
+    
+    
+    
+    
     
     
     

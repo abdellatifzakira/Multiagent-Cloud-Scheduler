@@ -1,5 +1,8 @@
 import igraph as ig
-from classes.TaskClass import Task
+try :
+    from classes.TaskClass import Task
+except ModuleNotFoundError: 
+    from TaskClass import Task
 
 class Job:
     _counter = 0
@@ -92,11 +95,19 @@ class Job:
                 )
             for i in range(num_tasks)]
         
+        
         job = Job(
             id = job_id,
             tasks=Tasks,
             data_transfer_weights=data_transfer_weights
         )
+        
+        
+        # assign children and parents to task :
+        if data_transfer_weights is not None :
+            for parent_key, child_key in data_transfer_weights.keys():
+                job.tasks[parent_key].children.append(job.tasks[child_key])
+                job.tasks[child_key].parents.append(job.tasks[parent_key])
         return job
     
     def get_total_cpu_req(self):
@@ -285,14 +296,12 @@ if __name__ == "__main__":
     print("<","="*25,">")
     print(tree)
     
-    #job_1.print_job_layout(tree=tree, graph=graph)
+    job_1.print_job_layout(tree=tree, graph=graph)
     
     print(job_1.get_direct_paths_cost())
     print(job_1.get_direct_paths_runtime())
     print(job_1.get_total_ram_req())
     print(job_1.get_total_cpu_req())
-    
-    
     
     
     print("COSTLY PATH : ", job_1.get_costly_path()) # expecting [0, 1, 3] : 4
@@ -303,22 +312,8 @@ if __name__ == "__main__":
     
     print("RAM CONSUMING PATH : ", job_1.get_ram_demanding_path()) # expecting [0, 2] : 0.1
     
+    
+    for task in job_1.tasks.values():
+        print(f"TASK N: {task.id} HAVE PARENTS : ",[t.id for t in task.parents])
+        print(f"TASK N: {task.id}  HAVE CHILDREN : ",[t.id for t in task.children])
     #print([task.job_id for task in job_1.tasks.values()])
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-        
-
-    

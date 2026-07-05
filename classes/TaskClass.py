@@ -21,4 +21,20 @@ class Task:
     self.arrival_time = None
     self.start_time = None
     self.end_time = None
+    self.parents = []
+    self.children =  []
+    self.remaining_parents = len(self.parents)
+    
+    
+  def notify_parent_finished(self):
+    if self.remaining_parents > 0:
+        self.remaining_parents -= 1
+
+    if self.remaining_parents == 0:
+        self.status = 1  # READY
+  
+  def on_finished(self):
+    for child in self.children:
+        child.notify_parent_finished()
+      
     #self.deadline = self.start_time + self.runtime

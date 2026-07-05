@@ -15,6 +15,8 @@ class Vm:
 
         self.used_cpu = 0.0
         self.used_ram = 0.0
+        
+        
 
     # ----------------------------
     # RESOURCE CHECK
@@ -37,23 +39,22 @@ class Vm:
 
         task.vm_id = self.id
         task.status = 2  # running
-        return task
+        return True
 
     # ----------------------------
     # FINISH TASK
     # ----------------------------
     def release_task(self):
         if self.hosted_task is None:
-            return None
+            return False
 
-        task = self.hosted_task
+        self.used_cpu -= self.hosted_task.cpu
+        self.used_ram -= self.hosted_task.ram
 
-        self.used_cpu -= task.cpu
-        self.used_ram -= task.ram
-
-        task.status = 0  # finished
+        self.hosted_task.status = 0  # finished
+        self.hosted_task.on_finished()
 
         self.hosted_task = None
         self.status = 0  # idle again
 
-        return task
+        return True
