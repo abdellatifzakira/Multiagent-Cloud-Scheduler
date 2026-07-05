@@ -40,7 +40,18 @@ class Server_Farm:
     
     def get_power_price(self):
         return sum(server.get_power_consumption() for server in self.servers.values())*self.power_price
+    
+    # Naive first in list first served at first to be enhanced later on
+    def host_task_in_farm(self, task):
+        for server in self.available_servers():
+            if server.host_task_in_server(task) :
+                return True
+        return False
 
+    def update_farm_state(self, time_step = 1):
+        for server in self.servers.values() :
+            server.time_step_vm(time_step = time_step)
+            
 
 
 

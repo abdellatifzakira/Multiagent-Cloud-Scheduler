@@ -11,7 +11,7 @@ class RoundRobinScheduler:
         self.servers = self.populate_servers()
         
         
-    def populate_farms(self):
+    def populate_servers(self):
         return self.server_farm.servers
         
 

@@ -16,6 +16,7 @@ class Vm:
         self.used_cpu = 0.0
         self.used_ram = 0.0
         
+        self.timer = 0.0
         
 
     # ----------------------------
@@ -39,6 +40,7 @@ class Vm:
 
         task.vm_id = self.id
         task.status = 2  # running
+        self.timer = task.runtime
         return True
 
     # ----------------------------
@@ -56,5 +58,6 @@ class Vm:
 
         self.hosted_task = None
         self.status = 0  # idle again
+        self.timer = 0.0
 
         return True

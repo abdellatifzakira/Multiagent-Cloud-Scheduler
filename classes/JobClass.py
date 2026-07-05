@@ -108,6 +108,9 @@ class Job:
             for parent_key, child_key in data_transfer_weights.keys():
                 job.tasks[parent_key].children.append(job.tasks[child_key])
                 job.tasks[child_key].parents.append(job.tasks[parent_key])
+            
+        for tsk in job.tasks.values() :
+            tsk.remaining_parents = len(tsk.parents)
         return job
     
     def get_total_cpu_req(self):
@@ -267,6 +270,21 @@ class Job:
             return None
         max_ram = max(rams.items(), key=lambda item: item[1])
         return max_ram 
+
+    def get_entry_points(self):
+        entries = []
+        for task in self.tasks.values():
+            if len(task.parents) == 0:
+                entries.append(task)
+        return entries
+    
+    def get_ready_tasks(self):
+        ready = []
+        for task in self.tasks.values():
+            if task.status == 1:
+                ready.append(task)
+
+        return ready
 
 
 # QUICK TESTS :

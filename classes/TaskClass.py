@@ -23,7 +23,8 @@ class Task:
     self.end_time = None
     self.parents = []
     self.children =  []
-    self.remaining_parents = len(self.parents)
+    self.remaining_parents = 0
+    
     
     
   def notify_parent_finished(self):

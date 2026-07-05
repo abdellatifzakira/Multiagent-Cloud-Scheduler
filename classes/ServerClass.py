@@ -1,4 +1,4 @@
-import math
+import numpy as np
 
 try :
     from classes.VmClass import Vm
@@ -78,6 +78,8 @@ class Server:
 
     # Basic Hosting : first in list, first served => to be enhanced
     def host_task_in_server(self, task):
+        if task.status != 1 :
+            return False
         for vm in self.get_idle_vms():
             if vm.check_req_constraint(task):
                 self.hosted_tasks[(task.id, task.job_id)] = vm.id
@@ -90,8 +92,7 @@ class Server:
 
     
     def cpu_utilization(self):
-        vms =  self.vms.values()
-        return sum(vm.used_cpu for vm in vms)
+        return np.sum(vm.used_cpu for vm in self.vms.values())
     
     
     # at first we try simple linear power consumption
@@ -99,8 +100,12 @@ class Server:
         cpu_utilization = self.cpu_utilization()
         return round(cpu_utilization*self.alpha + self.static_power, ndigits=3)
     
-
-
+    def time_step_vm(self, time_step=1):
+        for vm in self.vms.values():
+            if vm.hosted_task is not None:
+                vm.timer -= time_step
+                if vm.timer <= 0:
+                    vm.release_task()
 
 # QUICK TESTS :
 
