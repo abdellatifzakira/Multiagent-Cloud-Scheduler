@@ -1,3 +1,4 @@
+import numpy as np
 import igraph as ig
 try :
     from classes.TaskClass import Task
@@ -174,6 +175,10 @@ class Job:
         for r in roots:
             dfs(r, [r], 0)
         return all_paths
+    
+    
+    def get_deadline(self):
+        return np.sum(task.runtime for task in self.tasks.values())
     
     
     def get_direct_paths_runtime(self):

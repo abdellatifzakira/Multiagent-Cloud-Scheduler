@@ -39,7 +39,7 @@ server_2.spawn_vm_group(
     cpu = [0.25,0.25,0.25],
     ram = [0.3,0.3,0.3]
 )
-server_2.spawn_vm_group(
+server_3.spawn_vm_group(
     cpu = [0.1,0.75,0.1],
     ram = [0.1,0.6,0.2]
 )
@@ -54,11 +54,12 @@ server_farm = Server_Farm(
 #WORKLOAD
 
 job_1 =  Job()
+job_2 = Job()
     
 job_1 = job_1.spawn_job(
         num_tasks= 4,
-        cpu_req= [0.2, 0.65, 0.05, 0.03],
-        ram_req= [0.2, 0.45, 0.09, 0.03],
+        cpu_req= [0.02, 0.02, 0.05, 0.03],
+        ram_req= [0.02, 0.05, 0.09, 0.03],
         runtime= [10, 20, 30, 10],
         data_transfer_weights= {
          (0,2) : 1,
@@ -67,66 +68,22 @@ job_1 = job_1.spawn_job(
         }
     )
 
-ready_tasks =  []
 
-state = {
-        0 : "FINISHED",
-        1 : "READY",
-        2 : "RUNNING",
-        3 : "INITIALIZED"
-    }
+job_2 = job_2.spawn_job(
+        num_tasks= 4,
+        cpu_req= [0.02, 0.02, 0.05, 0.03],
+        ram_req= [0.02, 0.05, 0.09, 0.03],
+        runtime= [10, 20, 30, 10],
 
-ready_tasks.extend(job_1.get_entry_points())
+    )
 
-for task in ready_tasks:
-    task.status = 1
+RR = RoundRobinScheduler(
+    server_farm=server_farm,
+    jobs=[job_1, job_2]
+)
 
-horizon = round(sum(task.runtime for task in job_1.tasks.values())*1.25, 0)
+time_line, task_state, cpu_utilization = RR.schedule()
 
-for task in ready_tasks :
-    server_farm.host_task_in_farm(task)
-
-
-for task in job_1.tasks.values():
-    print(f"TASK ID : {task.id} | STATUS : {state[task.status]}")
-    
-time_step = 1
-
-
-time_line = []
-power_price = []
-cpu_utilization = {s  : [] for s in server_farm.servers.values()}
-task_state = {t: [] for t in job_1.tasks.values()}
-t = 0 
-while t <= horizon:
-    server_farm.update_farm_state(time_step=time_step)
-    for task in ready_tasks:
-        if task.status == 1: 
-            server_farm.host_task_in_farm(task)
-    
-    
-    
-    ready_tasks = job_1.get_ready_tasks()
-    power_price.append(server_farm.get_power_price())
-    
-    for s in cpu_utilization.keys() :
-        cpu_utilization[s].append(s.cpu_utilization())
-        
-    
-    for tsk in job_1.tasks.values() :
-        task_state[tsk].append(tsk.status)
-    
-    
-    
-    time_line.append(t)
-    t += 1
-
-print("=========== AFTER SIMULATION ==========")
-
-for task in job_1.tasks.values():
-    print(f"TASK ID : {task.id} | STATUS : {state[task.status]}")
-    
-  
 plt.style.use("seaborn-v0_8-darkgrid")
 
 fig, (ax1, ax2) = plt.subplots(
@@ -158,12 +115,12 @@ ax1.legend(loc="upper left", bbox_to_anchor=(1.02, 1), borderaxespad=0)
 # -------------------------
 # Bottom: Task States
 # -------------------------
-for t in job_1.tasks.values():
+for t in task_state.keys():
     ax2.plot(
         time_line,
         task_state[t],
         linestyle="--",
-        linewidth=2.5,
+        linewidth=1.5,
         alpha=0.9,
         label=f"Task {t.id}"
     )

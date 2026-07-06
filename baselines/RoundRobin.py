@@ -1,34 +1,68 @@
+import numpy as np
+
 class RoundRobinScheduler:
     def __init__(self,
                  server_farm = None,
                  jobs : list = None,
                  data_transfer_manager = None,
-                 horizon = None,
+                 margin = 0.1,
                  ):
         self.server_farm = server_farm
         self.jobs = jobs
+        self.margin = margin
         self.data_transfer_manager = data_transfer_manager
         self.servers = self.populate_servers()
+        self.ready_tasks = self.find_entry_tasks()
+        self.horizon = self.compute_simulation_horizon()
+        self.pointer = 0
         
+    def compute_simulation_horizon(self):
+        horizon = np.sum(job.get_deadline() for job in self.jobs)
+        return horizon*(1 + self.margin)
+    
+    def find_entry_tasks(self):
+        ready_tasks = []
+        for job in self.jobs :
+            ready_tasks.extend(job.get_entry_points())
+        for task in ready_tasks:
+            task.status = 1
+        return ready_tasks
+
+    def find_ready_tasks(self):
+        ready_task = []
+        for job in self.jobs :
+            ready_task.extend(job.get_ready_tasks())
+        return ready_task
         
     def populate_servers(self):
         return self.server_farm.servers
         
-
-    def schedule(self, task):
-        n = len(self.server_list)
-        for _ in range(n):
-            server = self.server_list[self.pointer]
-            self.pointer = (self.pointer + 1) % n
-            success = server.host_task_in_server(task)
-            if not success:
-                return False  
-        return success  
-
-    
-    
-    
-    
-    
     def schedule(self):
-        return
+        n = len(self.servers)
+        _t = 0
+        time_line = []
+        task_state = {
+                        task_key: []
+                        for job in self.jobs
+                        for task_key in job.tasks.values()
+                    }
+        cpu_usage = {s  : [] for s in self.server_farm.servers.values()}
+        while _t < self.horizon :
+            for task in self.ready_tasks :
+                    server = self.servers[self.pointer]
+                    self.pointer = (self.pointer + 1) % n
+                    success = server.host_task_in_server(task)
+                     
+            for s in cpu_usage.keys() :
+                cpu_usage[s].append(s.cpu_utilization())
+            
+            for tsk in [_task for _job in self.jobs for _task in _job.tasks.values()] :
+                task_state[tsk].append(tsk.status)
+            self.ready_tasks = self.find_ready_tasks()
+            self.server_farm.update_farm_state()
+            time_line.append(_t)
+            _t += 1
+            
+        return  time_line, task_state, cpu_usage
+
+
