@@ -83,6 +83,8 @@ class Server:
         for vm in self.get_idle_vms():
             if vm.check_req_constraint(task):
                 self.hosted_tasks[(task.id, task.job_id)] = vm.id
+                task.server_id = self.id
+                task.vm_id = vm.id
                 return vm.host_task(task)
         return False
     

@@ -47,22 +47,29 @@ class RoundRobinScheduler:
                         for task_key in job.tasks.values()
                     }
         cpu_usage = {s  : [] for s in self.server_farm.servers.values()}
+        power_price = []
+        
+        server_schedules = {_id : [] for _id in range(n)}
         while _t < self.horizon :
             for task in self.ready_tasks :
                     server = self.servers[self.pointer]
-                    self.pointer = (self.pointer + 1) % n
                     success = server.host_task_in_server(task)
+                    if success:
+                        server_schedules[self.pointer].append(_t) 
+                    self.pointer = (self.pointer + 1) % n
                      
             for s in cpu_usage.keys() :
                 cpu_usage[s].append(s.cpu_utilization())
             
             for tsk in [_task for _job in self.jobs for _task in _job.tasks.values()] :
                 task_state[tsk].append(tsk.status)
+            
+            power_price.append(self.server_farm.get_power_price())
             self.ready_tasks = self.find_ready_tasks()
             self.server_farm.update_farm_state()
             time_line.append(_t)
             _t += 1
             
-        return  time_line, task_state, cpu_usage
+        return  time_line, task_state, cpu_usage, power_price, server_schedules
 
 

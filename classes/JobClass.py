@@ -15,6 +15,7 @@ class Job:
         id: int = None
 
     ):
+        print(Job._counter)
         if id is None:
             self.id = Job._counter
             Job._counter += 1
@@ -77,13 +78,13 @@ class Job:
         return {task.id: task for task in tasks}
     
 
-    
-    def spawn_job(self, num_tasks=3,
+    @staticmethod
+    def spawn_job(num_tasks=3,
                   job_id = None,
                   cpu_req = [0.01, 0.02, 0.03],
                   ram_req = [0.01, 0.02, 0.03],
                   runtime = [10, 10, 10],
-                  data_transfer_weights = {(0,1) : 1,(1,2) : 1}):
+                  data_transfer_weights = None):
         assert num_tasks == len(cpu_req) == len(ram_req) == len(runtime), f"\n[INPUT ERROR] Input length mismatch \nEXPECTED TASKS NUM = {num_tasks} \nCPU REQ LENGTH = {len(cpu_req)} \nRAM REQ LENGTH = {len(ram_req)} \nRUNTIME REQ LENGTH = {len(runtime)}"
         
         Tasks = [ Task(
@@ -113,6 +114,54 @@ class Job:
         for tsk in job.tasks.values() :
             tsk.remaining_parents = len(tsk.parents)
         return job
+    
+    
+    
+    @staticmethod
+    def generate_jobs(num_jobs, num_tasks_per_job=4, seed=None):
+        """
+        Generate multiple jobs with random parameters.
+        
+        Args:
+            num_jobs: number of jobs to create
+            num_tasks_per_job: tasks per job (default 4)
+            seed: random seed for reproducibility
+        
+        Returns:
+            list of Job objects
+        """
+        if seed:
+            np.random.seed(seed)
+        
+        jobs = []
+        for job_id in range(num_jobs):
+            # Random task parameters
+            cpu_req = [round(np.random.uniform(0.01, 0.1), 3) for _ in range(num_tasks_per_job)]
+            ram_req = [round(np.random.uniform(0.01, 0.1), 3) for _ in range(num_tasks_per_job)]
+            runtime = [round(np.random.uniform(5, 30), 1) for _ in range(num_tasks_per_job)]
+            
+            # Generate random DAG edges
+            data_transfer_weights = {}
+            for i in range(num_tasks_per_job - 1):
+                for j in range(i + 1, num_tasks_per_job):
+                    if np.random.random() < 0.6:  # 60% chance of edge
+                        weight = np.random.randint(1, 5)
+                        data_transfer_weights[(i, j)] = weight
+            
+            job = Job().spawn_job(
+                num_tasks=num_tasks_per_job,
+                cpu_req=cpu_req,
+                ram_req=ram_req,
+                runtime=runtime,
+                data_transfer_weights=data_transfer_weights if data_transfer_weights else None,
+                job_id=job_id
+            )
+            jobs.append(job)
+        
+        return jobs
+
+
+
     
     def get_total_cpu_req(self):
         return round(sum(task.cpu for task in self.tasks.values()), ndigits=2)
@@ -302,7 +351,7 @@ if __name__ == "__main__":
         num_tasks= 4,
         cpu_req= [0.01, 0.03, 0.05, 0.03],
         ram_req= [0.01, 0.01, 0.09, 0.03],
-        runtime= [10, 10, 25, 10],
+        runtime= [25, 10, 25, 10],
         data_transfer_weights= {
          (0,1) : 1,
          (0,2) : 2,

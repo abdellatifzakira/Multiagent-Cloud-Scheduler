@@ -8,10 +8,11 @@ from baselines.RoundRobin import RoundRobinScheduler
 import igraph as ig
 import random
 import time
+import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.pylab as plt 
-
-
+from matplotlib.gridspec import GridSpec
+import networkx as nx
+from utilities.helpers import *
 
 #INFRASTRUCTURE
 
@@ -32,70 +33,83 @@ server_3 = Server(
 )
 
 server_1.spawn_vm_group(
-    cpu = [0.2],
-    ram = [0.3]
+    cpu = [0.2, 0.3, 0.4],
+    ram = [0.3, 0.3, 0.3]
 )
 server_2.spawn_vm_group(
-    cpu = [0.25,0.25,0.25],
-    ram = [0.3,0.3,0.3]
+    cpu = [0.55, 0.3],
+    ram = [0.3, 0.2]
 )
 server_3.spawn_vm_group(
-    cpu = [0.1,0.75,0.1],
-    ram = [0.1,0.6,0.2]
+    cpu = [0.4],
+    ram = [0.5]
 )
-
+servers_list = [server_1, server_2, server_3]
 server_farm = Server_Farm(
     id =  0,
-    servers=[server_1, server_2, server_3],
-    num_servers=3
+    servers= servers_list,
+    num_servers=len(servers_list)
 )
 
 
 #WORKLOAD
 
-job_1 =  Job()
-job_2 = Job()
+
+"""
+
+job_1 = Job.spawn_job(
+        num_tasks= 4,
+        cpu_req= [0.02, 0.02, 0.05, 0.03],
+        ram_req= [0.02, 0.05, 0.09, 0.03],
+        runtime= [10, 10, 10, 10],
+    )
+
+job_2 = Job.spawn_job(
+        num_tasks= 4,
+        cpu_req= [0.02, 0.02, 0.05, 0.03],
+        ram_req= [0.02, 0.05, 0.09, 0.03],
+        runtime= [10, 10, 10, 10],
+    )
+
+job_3= Job.spawn_job(
+        num_tasks= 4,
+        cpu_req= [0.02, 0.02, 0.05, 0.03],
+        ram_req= [0.02, 0.05, 0.09, 0.03],
+        runtime= [10, 10, 10, 10],
+    )
+
+
+jobs = [job_1, job_2]
+
+
+"""
+jobs = Job.generate_jobs(
+    num_jobs=1, 
+    num_tasks_per_job=4,
+    seed=42
     
-job_1 = job_1.spawn_job(
-        num_tasks= 4,
-        cpu_req= [0.02, 0.02, 0.05, 0.03],
-        ram_req= [0.02, 0.05, 0.09, 0.03],
-        runtime= [10, 20, 30, 10],
-        data_transfer_weights= {
-         (0,2) : 1,
-         (1,2) : 2,
-         (2,3) : 3
-        }
-    )
+)
 
+plot_job_dags(jobs=jobs)
 
-job_2 = job_2.spawn_job(
-        num_tasks= 4,
-        cpu_req= [0.02, 0.02, 0.05, 0.03],
-        ram_req= [0.02, 0.05, 0.09, 0.03],
-        runtime= [10, 20, 30, 10],
-
-    )
 
 RR = RoundRobinScheduler(
     server_farm=server_farm,
-    jobs=[job_1, job_2]
+    jobs=jobs
 )
 
-time_line, task_state, cpu_utilization = RR.schedule()
+time_line, task_state, cpu_utilization, power_price, server_schedules = RR.schedule()
+
 
 plt.style.use("seaborn-v0_8-darkgrid")
 
-fig, (ax1, ax2) = plt.subplots(
-    2, 1,
-    figsize=(12, 8),
-    sharex=True,
-    gridspec_kw={"height_ratios": [2, 1]}
-)
+fig = plt.figure(figsize=(16, 12))
+gs = GridSpec(2, 2, figure=fig, hspace=0.3, wspace=0.3)
 
-# -------------------------
-# Top: CPU Utilization
-# -------------------------
+# ─────────────────────────────────────────────
+# TOP-LEFT: CPU UTILIZATION
+# ─────────────────────────────────────────────
+ax1 = fig.add_subplot(gs[0, 0])
 for s in cpu_utilization.keys():
     ax1.plot(
         time_line,
@@ -105,31 +119,82 @@ for s in cpu_utilization.keys():
         markersize=3,
         label=f"Server {s.id}"
     )
-
 ax1.set_title("CPU Utilization Over Time", fontsize=14, fontweight="bold")
 ax1.set_ylabel("CPU Utilization", fontsize=12)
+ax1.set_xlabel("Time", fontsize=12)
 ax1.grid(True, linestyle="--", alpha=0.4)
-ax1.legend(loc="upper left", bbox_to_anchor=(1.02, 1), borderaxespad=0)
+ax1.legend(loc="upper right", fontsize=10)
 
+# ─────────────────────────────────────────────
+# TOP-RIGHT: POWER PRICE
+# ─────────────────────────────────────────────
+ax2 = fig.add_subplot(gs[0, 1])
+ax2.plot(
+    time_line,
+    power_price,
+    linestyle="--",
+    linewidth=2.5,
+    marker="s",
+    markersize=4,
+)
 
-# -------------------------
-# Bottom: Task States
-# -------------------------
+ax2.set_ylim(min(power_price)*0.99, max(power_price)*1.01)
+ax2.fill_between(time_line, power_price, alpha=0.3, color="#FF6B6B")
+ax2.set_title("Power Price Over Time", fontsize=14, fontweight="bold")
+ax2.set_ylabel("Power Price", fontsize=12)
+ax2.set_xlabel("Time", fontsize=12)
+ax2.grid(True, linestyle="--", alpha=0.4)
+
+# ─────────────────────────────────────────────
+# BOTTOM-LEFT: TASK STATES
+# ─────────────────────────────────────────────
+ax3 = fig.add_subplot(gs[1, 0])
 for t in task_state.keys():
-    ax2.plot(
+    ax3.plot(
         time_line,
         task_state[t],
         linestyle="--",
         linewidth=1.5,
-        alpha=0.9,
-        label=f"Task {t.id}"
+        alpha=0.7,
+        label=f"Task {t.id, t.job_id}"
     )
+ax3.set_title("Task States Over Time", fontsize=14, fontweight="bold")
+ax3.set_ylabel("State (0=done, 1=ready, 2=running, 3=init)", fontsize=12)
+ax3.set_xlabel("Time", fontsize=12)
+ax3.grid(True, linestyle="--", alpha=0.4)
+ax3.legend(loc="upper right", fontsize=8, ncol=2)
 
-ax2.set_title("Task States Over Time", fontsize=14, fontweight="bold")
-ax2.set_xlabel("Time", fontsize=12)
-ax2.set_ylabel("State", fontsize=12)
-ax2.grid(True, linestyle="--", alpha=0.4)
-ax2.legend(loc="upper left", bbox_to_anchor=(1.02, 1), borderaxespad=0)
+
+# ─────────────────────────────────────────────
+# BOTTOM-RIGHT: SCHEDULING HEATMAP
+# ─────────────────────────────────────────────
+ax4 = fig.add_subplot(gs[1, 1])
+
+time_bins = int(max(max(times) for times in server_schedules.values())) + 1
+servers = sorted(server_schedules.keys())
+matrix = np.zeros((len(servers), time_bins))
+
+for server_idx, server_id in enumerate(servers):
+    for timestamp in server_schedules[server_id]:
+        time_bin = int(timestamp)
+        matrix[server_idx, time_bin] += 1
+
+im = ax4.imshow(
+    matrix,
+    cmap='YlOrRd',
+    aspect='auto',
+    interpolation='none'
+)
+ax4.set_xlabel('Time Steps', fontsize=12)
+ax4.set_ylabel('Server ID', fontsize=12)
+ax4.set_yticks(range(len(servers)))
+ax4.set_yticklabels([f'Server {s}' for s in servers])
+ax4.set_title('Scheduling Pattern (Round-Robin Distribution)', 
+              fontsize=14, fontweight="bold")
+#ax4.set_xlim(min(time_line), max(time_line))
+
+cbar = plt.colorbar(im, ax=ax4)
+cbar.set_label('# Events', fontsize=10)
 
 plt.tight_layout()
 plt.show()
