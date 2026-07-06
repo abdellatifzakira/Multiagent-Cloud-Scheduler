@@ -9,13 +9,14 @@ class RoundRobinScheduler:
                  ):
         self.server_farm = server_farm
         self.jobs = jobs
+        self.job_dict = self.populate_job(jobs)
         self.margin = margin
         self.data_transfer_manager = data_transfer_manager
         self.servers = self.populate_servers()
         self.ready_tasks = self.find_entry_tasks()
         self.horizon = self.compute_simulation_horizon()
         self.pointer = 0
-        
+        self.running_tasks = []
     def compute_simulation_horizon(self):
         horizon = np.sum(job.get_deadline() for job in self.jobs)
         return horizon*(1 + self.margin)
@@ -33,9 +34,28 @@ class RoundRobinScheduler:
         for job in self.jobs :
             ready_task.extend(job.get_ready_tasks())
         return ready_task
+    
+    def find_running_tasks(self):
+        ready_task = []
+        for job in self.jobs :
+            ready_task.extend(job.get_running_tasks())
+        return ready_task
         
     def populate_servers(self):
         return self.server_farm.servers
+    
+    def populate_job(self, jobs) :
+        return {job.id : job for job in jobs}
+    
+    def monitor_data_transfer(self):
+        data_transfer= 0
+        for running in self.running_tasks :
+            if len(running.parents)>0 and not running.monitored:
+                for parent in running.parents :
+                    if parent.server_id != running.server_id :
+                        data_transfer += self.job_dict[running.job_id].data_transfer_weights[(parent.id,running.id)]
+                running.monitored = True
+        return data_transfer
         
     def schedule(self):
         n = len(self.servers)
@@ -48,7 +68,7 @@ class RoundRobinScheduler:
                     }
         cpu_usage = {s  : [] for s in self.server_farm.servers.values()}
         power_price = []
-        
+        data_transfer = []
         server_schedules = {_id : [] for _id in range(n)}
         while _t < self.horizon :
             for task in self.ready_tasks :
@@ -67,9 +87,11 @@ class RoundRobinScheduler:
             power_price.append(self.server_farm.get_power_price())
             self.ready_tasks = self.find_ready_tasks()
             self.server_farm.update_farm_state()
+            self.running_tasks = self.find_running_tasks()
+            data_transfer.append(self.monitor_data_transfer())
             time_line.append(_t)
             _t += 1
             
-        return  time_line, task_state, cpu_usage, power_price, server_schedules
+        return  time_line, task_state, cpu_usage, power_price, server_schedules, data_transfer
 
 

@@ -24,6 +24,7 @@ class Task:
     self.parents = []
     self.children =  []
     self.remaining_parents = 0
+    self.monitored = False
     
     
     

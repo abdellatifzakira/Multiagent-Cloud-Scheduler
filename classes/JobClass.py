@@ -15,7 +15,6 @@ class Job:
         id: int = None
 
     ):
-        print(Job._counter)
         if id is None:
             self.id = Job._counter
             Job._counter += 1
@@ -340,6 +339,13 @@ class Job:
 
         return ready
 
+    def get_running_tasks(self):
+        running = []
+        for task in self.tasks.values():
+            if task.status == 2:
+                running.append(task)
+
+        return running
 
 # QUICK TESTS :
 
