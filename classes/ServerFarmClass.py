@@ -48,9 +48,9 @@ class Server_Farm:
                 return True
         return False
 
-    def update_farm_state(self, time_step = 1):
+    def update_farm_state(self,t, time_step = 1):
         for server in self.servers.values() :
-            server.time_step_vm(time_step = time_step)
+            server.time_step_vm(_t=t,time_step = time_step)
             
 
 

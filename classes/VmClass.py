@@ -31,7 +31,7 @@ class Vm:
     # ----------------------------
     # HOST TASK
     # ----------------------------
-    def host_task(self, task):
+    def host_task(self, task, t):
         self.hosted_task = task
         self.status = 1  # busy
 
@@ -40,13 +40,14 @@ class Vm:
 
         task.vm_id = self.id
         task.status = 2  # running
+        task.start_time = t
         self.timer = task.runtime
         return True
 
     # ----------------------------
     # FINISH TASK
     # ----------------------------
-    def release_task(self):
+    def release_task(self, t):
         if self.hosted_task is None:
             return False
 
@@ -54,7 +55,8 @@ class Vm:
         self.used_ram -= self.hosted_task.ram
 
         self.hosted_task.status = 0  # finished
-        self.hosted_task.on_finished()
+        self.hosted_task.end_time = t
+        self.hosted_task.on_finished(t) # inter-tasks notification 
 
         self.hosted_task = None
         self.status = 0  # idle again

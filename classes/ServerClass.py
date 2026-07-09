@@ -77,7 +77,7 @@ class Server:
         return len(self.get_idle_vms()) > 0
 
     # Basic Hosting : first in list, first served => to be enhanced
-    def host_task_in_server(self, task):
+    def host_task_in_server(self, task, t):
         if task.status != 1 :
             return False
         for vm in self.get_idle_vms():
@@ -85,7 +85,7 @@ class Server:
                 self.hosted_tasks[(task.id, task.job_id)] = vm.id
                 task.server_id = self.id
                 task.vm_id = vm.id
-                return vm.host_task(task)
+                return vm.host_task(task, t)
         return False
     
     def release_task_from_server(self, task_key):
@@ -102,12 +102,12 @@ class Server:
         cpu_utilization = self.cpu_utilization()
         return round(cpu_utilization*self.alpha + self.static_power, ndigits=3)
     
-    def time_step_vm(self, time_step=1):
+    def time_step_vm(self, _t, time_step=1):
         for vm in self.vms.values():
             if vm.hosted_task is not None:
                 vm.timer -= time_step
                 if vm.timer <= 0:
-                    vm.release_task()
+                    vm.release_task(_t)
 
 # QUICK TESTS :
 

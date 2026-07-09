@@ -12,7 +12,8 @@ class Job:
         tasks: list  = None,
         time_arrived: float = None,
         data_transfer_weights: dict = None,
-        id: int = None
+        id: int = None,
+        sla_limit = 200,
 
     ):
         if id is None:
@@ -28,7 +29,19 @@ class Job:
         self.data_transfer_weights = data_transfer_weights
         self.total_tasks = len(self.tasks) if tasks is not None else 0
         self.dag = self.build_dag()
-
+        self.sla_limit = sla_limit
+        self.end_time = None
+        self.sla_violated = None,
+        self.counted = False
+    
+    def set_time_arrived(self, _t):
+        self.time_arrived = _t
+        
+        for _tsk in self.tasks.values():
+            if _tsk.remaining_parents == 0:
+                _tsk.arrival_time = _t
+        
+        
     
     def build_dag(self):
         if self.data_transfer_weights is None:
@@ -83,7 +96,8 @@ class Job:
                   cpu_req = [0.01, 0.02, 0.03],
                   ram_req = [0.01, 0.02, 0.03],
                   runtime = [10, 10, 10],
-                  data_transfer_weights = None):
+                  data_transfer_weights = None,
+                  arrival_time = None):
         assert num_tasks == len(cpu_req) == len(ram_req) == len(runtime), f"\n[INPUT ERROR] Input length mismatch \nEXPECTED TASKS NUM = {num_tasks} \nCPU REQ LENGTH = {len(cpu_req)} \nRAM REQ LENGTH = {len(ram_req)} \nRUNTIME REQ LENGTH = {len(runtime)}"
         
         Tasks = [ Task(
@@ -92,7 +106,7 @@ class Job:
             cpu = cpu_req[i],
             ram= ram_req[i],
             status= 3,
-            runtime= runtime[i]
+            runtime= runtime[i],
                 )
             for i in range(num_tasks)]
         
@@ -100,7 +114,8 @@ class Job:
         job = Job(
             id = job_id,
             tasks=Tasks,
-            data_transfer_weights=data_transfer_weights
+            data_transfer_weights=data_transfer_weights,
+            time_arrived=arrival_time
         )
         
         
@@ -112,12 +127,15 @@ class Job:
             
         for tsk in job.tasks.values() :
             tsk.remaining_parents = len(tsk.parents)
+            if tsk.remaining_parents == 0 :
+                tsk.arrival_time = job.time_arrived
+                tsk.status = 1
         return job
     
     
     
     @staticmethod
-    def generate_jobs(num_jobs, num_tasks_per_job=4, seed=None):
+    def generate_jobs(num_jobs, num_tasks_per_job=4, seed=None, time_arrived = []):
         """
         Generate multiple jobs with random parameters.
         
@@ -129,15 +147,19 @@ class Job:
         Returns:
             list of Job objects
         """
+        
+        if time_arrived is not None :
+            assert len(time_arrived) == num_jobs, "[INVALID INPUT]\nArrival times does not macth the jobs number."
+        
         if seed:
             np.random.seed(seed)
         
         jobs = []
         for job_id in range(num_jobs):
             # Random task parameters
-            cpu_req = [round(np.random.uniform(0.01, 0.1), 3) for _ in range(num_tasks_per_job)]
-            ram_req = [round(np.random.uniform(0.01, 0.1), 3) for _ in range(num_tasks_per_job)]
-            runtime = [round(np.random.uniform(5, 30), 1) for _ in range(num_tasks_per_job)]
+            cpu_req = [round(np.random.uniform(0.01, 0.2), 3) for _ in range(num_tasks_per_job)]
+            ram_req = [round(np.random.uniform(0.01, 0.2), 3) for _ in range(num_tasks_per_job)]
+            runtime = [round(np.random.uniform(5, 100), 0) for _ in range(num_tasks_per_job)]
             
             # Generate random DAG edges
             data_transfer_weights = {}
@@ -155,6 +177,11 @@ class Job:
                 data_transfer_weights=data_transfer_weights if data_transfer_weights else None,
                 job_id=job_id
             )
+            
+            
+            if len(time_arrived):
+                job.set_time_arrived(time_arrived[job_id])
+
             jobs.append(job)
         
         return jobs

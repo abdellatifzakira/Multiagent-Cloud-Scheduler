@@ -2,12 +2,40 @@ import igraph as ig
 import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
-def plot_job_dags(jobs, figsize=(20, 5)):
-    """Plot DAGs horizontally side-by-side with better isolated node handling."""
+import math
+
+def plot_job_dags(jobs_list, figsize=(20, 5)):
+    """Plot DAGs with better isolated node handling."""
+    def closest_factors(n):
+        if n == 0:
+            return (0, 0)
+
+        n_abs = abs(n)
+        root = int(math.sqrt(n_abs))
+
+        for x in range(root, 0, -1):
+            if n_abs % x == 0:
+                y = n_abs // x
+
+                # restore sign for negative numbers
+                if n < 0:
+                    return (-x, y)
+
+                return (x, y)
+
+        return (1, n)
+    jobs = jobs_list.copy()
     num_jobs = len(jobs)
+    if num_jobs > 6 :
+        jobs = jobs[:6]
+        num_jobs = len(jobs)
+    
+    n, m = closest_factors(num_jobs)
     
     # Horizontal layout: 1 row, multiple columns
-    fig, axes = plt.subplots(1, num_jobs, figsize=figsize)
+    fig, axes = plt.subplots(n, m, figsize=figsize)
+    # Always make axes a flat 1D array
+    axes = np.array(axes).reshape(-1)
     
     # Handle single job case
     if num_jobs == 1:
