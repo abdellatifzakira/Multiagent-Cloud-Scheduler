@@ -10,7 +10,6 @@ from utilities.helpers import *
 from utilities.JobManager import JobManager
 
 #INFRASTRUCTURE
-
 server_1 = Server(
     c_cpu=1.0,
     c_ram=1.0,
@@ -26,6 +25,11 @@ server_3 = Server(
     c_ram=1.0,
     alpha = 0.05,
 )
+server_4 = Server(
+    c_cpu=1.0,
+    c_ram=1.0,
+    alpha = 0.02,
+)
 
 server_1.spawn_vm_group(
     cpu = [0.2, 0.3, 0.4],
@@ -39,7 +43,13 @@ server_3.spawn_vm_group(
     cpu = [0.4,0.5],
     ram = [0.5,0.4]
 )
-servers_list = [server_1, server_2, server_3]
+
+server_4.spawn_vm_group(
+    cpu = [0.2, 0.3, 0.4],
+    ram = [0.3, 0.3, 0.3]
+)
+
+servers_list = [server_1, server_2, server_3, server_4]
 #servers_list = [server_1]
 
 server_farm = Server_Farm(
@@ -51,7 +61,7 @@ server_farm = Server_Farm(
 
 #WORKLOAD
 num_jobs = 50
-mean_job_gap = 100
+mean_job_gap = 10
 num_tasks_per_job = 4
 arrival_times= np.int32(np.random.exponential(scale=mean_job_gap, size= int(num_jobs)))
 arrival_times = np.cumsum(arrival_times)
@@ -65,9 +75,6 @@ jobs = Job.generate_jobs(
 )
 
 plot_job_dags(jobs_list=jobs)
-
-
-
 
 
 RR = RoundRobinScheduler(
