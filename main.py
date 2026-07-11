@@ -9,6 +9,7 @@ from matplotlib.gridspec import GridSpec
 from utilities.helpers import *
 from utilities.JobManager import JobManager
 
+
 #INFRASTRUCTURE
 server_1 = Server(
     c_cpu=1.0,
@@ -61,7 +62,7 @@ server_farm = Server_Farm(
 
 #WORKLOAD
 num_jobs = 50
-mean_job_gap = 10
+mean_job_gap = 500
 num_tasks_per_job = 4
 arrival_times= np.int32(np.random.exponential(scale=mean_job_gap, size= int(num_jobs)))
 arrival_times = np.cumsum(arrival_times)
@@ -83,14 +84,6 @@ RR = RoundRobinScheduler(
 )
 
 time_line, cpu_utilization, power_price, server_schedules, data_transfer = RR.schedule()
-
-
-
-
-
-
-
-
 
 plt.style.use("seaborn-v0_8-darkgrid")
 

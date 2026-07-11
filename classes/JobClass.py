@@ -97,8 +97,10 @@ class Job:
                   ram_req = [0.01, 0.02, 0.03],
                   runtime = [10, 10, 10],
                   data_transfer_weights = None,
-                  arrival_time = None):
-        assert num_tasks == len(cpu_req) == len(ram_req) == len(runtime), f"\n[INPUT ERROR] Input length mismatch \nEXPECTED TASKS NUM = {num_tasks} \nCPU REQ LENGTH = {len(cpu_req)} \nRAM REQ LENGTH = {len(ram_req)} \nRUNTIME REQ LENGTH = {len(runtime)}"
+                  arrival_time = None,
+                  sizes = [32,32,32]
+                  ):
+        assert num_tasks == len(sizes) == len(cpu_req) == len(ram_req) == len(runtime), f"\n[INPUT ERROR] Input length mismatch \nEXPECTED TASKS NUM = {num_tasks} \nCPU REQ LENGTH = {len(cpu_req)} \nRAM REQ LENGTH = {len(ram_req)} \nRUNTIME REQ LENGTH = {len(runtime)}\nTASKS SIZES LENGTH = {len(sizes)}"
         
         Tasks = [ Task(
             id = i,
@@ -107,6 +109,7 @@ class Job:
             ram= ram_req[i],
             status= 3,
             runtime= runtime[i],
+            size= sizes[i]
                 )
             for i in range(num_tasks)]
         
@@ -160,12 +163,13 @@ class Job:
             cpu_req = [round(np.random.uniform(0.01, 0.2), 3) for _ in range(num_tasks_per_job)]
             ram_req = [round(np.random.uniform(0.01, 0.2), 3) for _ in range(num_tasks_per_job)]
             runtime = [round(np.random.uniform(5, 100), 0) for _ in range(num_tasks_per_job)]
+            sizes = [round(np.random.uniform(32, 1024), 0) for _ in range(num_tasks_per_job)]
             
             # Generate random DAG edges
             data_transfer_weights = {}
             for i in range(num_tasks_per_job - 1):
                 for j in range(i + 1, num_tasks_per_job):
-                    if np.random.random() < 0.6:  # 60% chance of edge
+                    if np.random.random() < 0.5:  # 50% chance of edge
                         weight = np.random.randint(1, 5)
                         data_transfer_weights[(i, j)] = weight
             
@@ -174,6 +178,7 @@ class Job:
                 cpu_req=cpu_req,
                 ram_req=ram_req,
                 runtime=runtime,
+                sizes= sizes,
                 data_transfer_weights=data_transfer_weights if data_transfer_weights else None,
                 job_id=job_id
             )

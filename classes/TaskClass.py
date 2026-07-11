@@ -7,6 +7,7 @@ class Task:
     ram: float,
     status: int,
     runtime: float,
+    size: int
     ):
     
     self.id = id
@@ -26,6 +27,8 @@ class Task:
     self.remaining_parents = 0
     self.monitored = False
     self.meet_sla = None
+    self.size = None
+    
     
     
     

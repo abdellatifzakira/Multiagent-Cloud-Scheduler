@@ -102,11 +102,12 @@ class RoundRobinScheduler:
             
             power_price.append(self.server_farm.get_power_price())
             self.ready_tasks = self.find_ready_tasks(_t = _t)
-            self.server_farm.update_farm_state(t=_t)
             self.running_tasks = self.find_running_tasks()
             data_transfer.append(self.monitor_data_transfer())
             time_line.append(_t)
+            self.server_farm.update_farm_state(t=_t)
             _t += 1
+
         
         
         return  time_line, cpu_usage, power_price, server_schedules, data_transfer
