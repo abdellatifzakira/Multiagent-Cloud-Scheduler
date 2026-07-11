@@ -22,6 +22,7 @@ class Server:
         server_farm_id: int = None,
         vms: list = None,
         id: int = None,
+        storage: int = 3072,
         static_power: float = 0.035,
         optimal_utilization_rate: float = 0.75
     ):
@@ -42,28 +43,29 @@ class Server:
         self.optimal_utilization_rate = optimal_utilization_rate
         
         self.hosted_tasks = {}
+        self.storage = storage
 
     def populate_vm(self, vms):
         if vms is None :
             return {}
         for vm in vms:
-            vm.server_id = self.id
+            vm.server = self
         return {vm.id: vm for vm in vms}
 
     def spawn_vm(self, vm):
         vm.server_id = self.id
         self.vms[vm.id] = vm
 
-    def spawn_vm_group(self, cpu=[0.5], ram=[0.5]):
+    def spawn_vm_group(self, cpu=[0.5], ram=[0.5], storage = [512]):
 
         start_id = max(self.vms.keys()) + 1 if self.vms else 0
 
-        assert len(cpu) == len(ram), "\n[INVALID INPUT]\nCPU and RAM lists must match"
-        assert sum(cpu) <= self.c_cpu and sum(ram) <= self.c_ram , "\n[INVALID INPUT]\nCPU or RAM requirements exceed the server capacity !"
+        assert len(storage) == len(cpu) == len(ram), "\n[INVALID INPUT]\nCPU, RAM and STORAGE lists must match"
+        assert sum(storage)<= self.storage and sum(cpu) <= self.c_cpu and sum(ram) <= self.c_ram , "\n[INVALID INPUT]\nCPU, RAM or STORAGE requirements exceed the server capacity !"
 
         for i in range(len(cpu)):
             vm_id = start_id + i
-            new_vm = Vm(id=vm_id, c_cpu=cpu[i], c_ram=ram[i])
+            new_vm = Vm(id=vm_id, c_cpu=cpu[i], c_ram=ram[i], c_storage= storage[i])
             self.spawn_vm(new_vm)
         
     
@@ -73,28 +75,37 @@ class Server:
     def get_busy_vms(self):
         return [vm for vm in self.vms.values() if vm.status == 1]
     
-    def is_available(self):
-        return len(self.get_idle_vms()) > 0
+    def is_available(self) -> bool:
+        return (self.cpu_utilization() < self.c_cpu and
+                self.ram_utilization() < self.c_ram and
+                self.storage_utilization() < self.storage
+                )
+        
+        
 
     # Basic Hosting : first in list, first served => to be enhanced
     def host_task_in_server(self, task, t):
         if task.status != 1 :
             return False
-        for vm in self.get_idle_vms():
+        for vm in self.vms.values():
             if vm.check_req_constraint(task):
-                self.hosted_tasks[(task.id, task.job_id)] = vm.id
-                task.server_id = self.id
-                task.vm_id = vm.id
+                self.hosted_tasks[task] = vm
+                task.server = self
+                task.vm = vm
                 return vm.host_task(task, t)
         return False
     
-    def release_task_from_server(self, task_key):
-        return self.vms[self.hosted_tasks[task_key]].release_task()
+    def release_task_from_server(self, task):
+        return self.hosted_tasks[task].release_task()
     
-
     
     def cpu_utilization(self):
         return np.sum(vm.used_cpu for vm in self.vms.values())
+    
+    def ram_utilization(self):
+        return np.sum(vm.used_ram for vm in self.vms.values())
+    def storage_utilization(self):
+        return np.sum(vm.used_storage for vm in self.vms.values())
     
     
     # at first we try simple linear power consumption
@@ -102,12 +113,14 @@ class Server:
         cpu_utilization = self.cpu_utilization()
         return round(cpu_utilization*self.alpha + self.static_power, ndigits=3)
     
+    
+    def get_storage_usage(self):
+        return sum(vm.used_storage for vm in self.vms.values())
+    
     def time_step_vm(self, _t, time_step=1):
         for vm in self.vms.values():
-            if vm.hosted_task is not None:
-                vm.timer -= time_step
-                if vm.timer <= 0:
-                    vm.release_task(_t)
+            if vm.hosted_task is not {}:
+                vm.time_step_tasks(_t)
 
 # QUICK TESTS :
 

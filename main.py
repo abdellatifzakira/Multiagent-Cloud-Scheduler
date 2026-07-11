@@ -15,39 +15,47 @@ server_1 = Server(
     c_cpu=1.0,
     c_ram=1.0,
     alpha = 0.02,
+    storage= 1024
 )
 server_2 = Server(
     c_cpu=1.0,
     c_ram=1.0,
     alpha = 0.03,
+    storage= 2048
 )
 server_3 = Server(
     c_cpu=1.0,
     c_ram=1.0,
     alpha = 0.05,
+    storage= 4096
 )
 server_4 = Server(
     c_cpu=1.0,
     c_ram=1.0,
     alpha = 0.02,
+    storage= 1024
 )
 
 server_1.spawn_vm_group(
     cpu = [0.2, 0.3, 0.4],
-    ram = [0.3, 0.3, 0.3]
+    ram = [0.3, 0.3, 0.3],
+    storage=[512, 128, 128]
 )
 server_2.spawn_vm_group(
     cpu = [0.55, 0.3],
-    ram = [0.3, 0.2]
+    ram = [0.3, 0.2],
+    storage=[512, 512]
 )
 server_3.spawn_vm_group(
     cpu = [0.4,0.5],
-    ram = [0.5,0.4]
+    ram = [0.5,0.4],
+    storage=[512, 1024]
 )
 
 server_4.spawn_vm_group(
     cpu = [0.2, 0.3, 0.4],
-    ram = [0.3, 0.3, 0.3]
+    ram = [0.3, 0.3, 0.3],
+    storage=[256, 512, 128]
 )
 
 servers_list = [server_1, server_2, server_3, server_4]
@@ -62,10 +70,11 @@ server_farm = Server_Farm(
 
 #WORKLOAD
 num_jobs = 50
-mean_job_gap = 500
+mean_job_gap = 10
 num_tasks_per_job = 4
 arrival_times= np.int32(np.random.exponential(scale=mean_job_gap, size= int(num_jobs)))
 arrival_times = np.cumsum(arrival_times)
+
 
 
 jobs = Job.generate_jobs(
@@ -73,6 +82,7 @@ jobs = Job.generate_jobs(
     num_tasks_per_job=num_tasks_per_job,
     seed=42,
     time_arrived=arrival_times,
+    edge_probability= 0.05 
 )
 
 plot_job_dags(jobs_list=jobs)
@@ -260,7 +270,7 @@ schedule_distribution = np.zeros(
 
 # fill matrix
 for task_idx, task in enumerate(all_tasks):
-    server_id = task.server_id
+    server_id = task.server.id
 
     if server_id is not None:
         schedule_distribution[server_id, task_idx] = 1
@@ -291,3 +301,4 @@ plt.show()
 
 #for task in [tsk for job in jobs for tsk in job.tasks.values()] :
 #   print(f"TASK ID : {task.id} RUN ON SERVER : {task.server_id}")
+

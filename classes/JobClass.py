@@ -138,7 +138,7 @@ class Job:
     
     
     @staticmethod
-    def generate_jobs(num_jobs, num_tasks_per_job=4, seed=None, time_arrived = []):
+    def generate_jobs(num_jobs, num_tasks_per_job=4, seed=None, time_arrived = [], edge_probability = 0.5):
         """
         Generate multiple jobs with random parameters.
         
@@ -159,17 +159,18 @@ class Job:
         
         jobs = []
         for job_id in range(num_jobs):
+            
             # Random task parameters
             cpu_req = [round(np.random.uniform(0.01, 0.2), 3) for _ in range(num_tasks_per_job)]
             ram_req = [round(np.random.uniform(0.01, 0.2), 3) for _ in range(num_tasks_per_job)]
             runtime = [round(np.random.uniform(5, 100), 0) for _ in range(num_tasks_per_job)]
-            sizes = [round(np.random.uniform(32, 1024), 0) for _ in range(num_tasks_per_job)]
+            sizes = [round(np.random.uniform(32, 128), 0) for _ in range(num_tasks_per_job)]
             
             # Generate random DAG edges
             data_transfer_weights = {}
             for i in range(num_tasks_per_job - 1):
                 for j in range(i + 1, num_tasks_per_job):
-                    if np.random.random() < 0.5:  # 50% chance of edge
+                    if np.random.random() < edge_probability:  # chance of edge
                         weight = np.random.randint(1, 5)
                         data_transfer_weights[(i, j)] = weight
             

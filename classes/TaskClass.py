@@ -7,7 +7,7 @@ class Task:
     ram: float,
     status: int,
     runtime: float,
-    size: int
+    size: int = None, 
     ):
     
     self.id = id
@@ -15,8 +15,7 @@ class Task:
     self.cpu = cpu
     self.ram = ram
     self.server_farm_id = None
-    self.server_id = None
-    self.vm_id = None
+    self.server = None
     self.status = status # -1: rejected, 0: finished, 1: ready, 2: running, 3: initialized.
     self.runtime = runtime
     self.arrival_time = None
@@ -27,9 +26,18 @@ class Task:
     self.remaining_parents = 0
     self.monitored = False
     self.meet_sla = None
-    self.size = None
+    self.size = size
+    self.timer = None
+    self.vm = None
     
-    
+  
+  def advance_timer(self, _t) :
+    if self.status != 2 :
+      return
+    if self.timer > 0 :
+      self.timer -= 1
+    if self.timer <=0 :
+      self.vm.release_task(self, _t)
     
     
   def notify_parent_finished(self, _t):

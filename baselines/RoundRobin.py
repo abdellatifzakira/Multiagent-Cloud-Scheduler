@@ -75,7 +75,7 @@ class RoundRobinScheduler:
         for running in self.running_tasks :
             if len(running.parents)>0 and not running.monitored:
                 for parent in running.parents :
-                    if parent.server_id != running.server_id :
+                    if parent.server != running.server :
                         data_transfer += self.job_dict[running.job_id].data_transfer_weights[(parent.id,running.id)]
                 running.monitored = True
         return data_transfer
