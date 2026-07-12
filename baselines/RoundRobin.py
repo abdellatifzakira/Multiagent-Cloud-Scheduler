@@ -70,6 +70,30 @@ class RoundRobinScheduler:
     def populate_job(self, jobs) :
         return {job.id : job for job in jobs}
     
+    def get_finished_jobs(self) :
+        _finished_jobs = []
+        for _job in self.jobs :
+            if {0} == set(tsk.status for tsk in _job.tasks.values()) :
+                _finished_jobs.append(_job)
+        return _finished_jobs
+            
+    
+    def get_sla_violation_rate(self) :
+        
+        if self.get_finished_jobs() != []:
+            for job in self.get_finished_jobs() :
+                job.end_time = max([tsk.end_time for tsk in job.tasks.values()])
+            sla_violation_rate = (
+                        np.sum([
+                            (job.end_time - job.time_arrived) > job.sla_limit
+                            for job in self.get_finished_jobs()
+                        ])
+                        / len(self.get_finished_jobs())
+                    ) * 100
+            return sla_violation_rate
+        else :
+            return 0
+                    
     def monitor_data_transfer(self):
         data_transfer= 0
         for running in self.running_tasks :
@@ -87,14 +111,16 @@ class RoundRobinScheduler:
         cpu_usage = {s  : [] for s in self.server_farm.servers.values()}
         power_price = []
         data_transfer = []
-        server_schedules = {_id : [] for _id in range(n)}
+        sla_violation = []
+        server_schedules = {s : [] for s in self.server_farm.servers.values()}
         while self.job_manager.workload or len(self.running_tasks)>0 or len(self.ready_tasks)>0:
             for task in self.ready_tasks :
                     server = self.servers[self.pointer]
-                    success = server.host_task_in_server(task, _t)
-                    if success:
-                        server_schedules[self.pointer].append(_t) 
+                    server.host_task_in_server(task, _t)
                     self.pointer = (self.pointer + 1) % n
+                    
+            for server in self.server_farm.servers.values() :
+                server_schedules[server].append(len(list(server.hosted_tasks.keys()))) 
                      
             for s in cpu_usage.keys() :
                 cpu_usage[s].append(s.cpu_utilization())
@@ -104,12 +130,13 @@ class RoundRobinScheduler:
             self.ready_tasks = self.find_ready_tasks(_t = _t)
             self.running_tasks = self.find_running_tasks()
             data_transfer.append(self.monitor_data_transfer())
+            sla_violation.append(self.get_sla_violation_rate())
             time_line.append(_t)
             self.server_farm.update_farm_state(t=_t)
             _t += 1
 
         
         
-        return  time_line, cpu_usage, power_price, server_schedules, data_transfer
+        return  time_line, cpu_usage, power_price, server_schedules, data_transfer, sla_violation
 
 

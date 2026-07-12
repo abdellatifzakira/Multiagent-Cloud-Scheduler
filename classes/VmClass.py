@@ -76,6 +76,7 @@ class Vm:
         task.on_finished(t) # Inter-tasks notification 
 
         self.hosted_task.pop(task)
+        self.server.hosted_tasks.pop(task)
         
         #self.status = 0  # idle again
         

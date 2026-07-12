@@ -53,7 +53,7 @@ class Server:
         return {vm.id: vm for vm in vms}
 
     def spawn_vm(self, vm):
-        vm.server_id = self.id
+        vm.server = self
         self.vms[vm.id] = vm
 
     def spawn_vm_group(self, cpu=[0.5], ram=[0.5], storage = [512]):

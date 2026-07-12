@@ -5,43 +5,34 @@ import networkx as nx
 import math
 
 def plot_job_dags(jobs_list, figsize=(20, 5)):
-    """Plot DAGs with better isolated node handling."""
+    """Plot DAGs with hierarchical layout."""
     def closest_factors(n):
         if n == 0:
             return (0, 0)
-
         n_abs = abs(n)
         root = int(math.sqrt(n_abs))
-
         for x in range(root, 0, -1):
             if n_abs % x == 0:
                 y = n_abs // x
-
-                # restore sign for negative numbers
                 if n < 0:
                     return (-x, y)
-
                 return (x, y)
-
         return (1, n)
+    
     jobs = jobs_list.copy()
     num_jobs = len(jobs)
-    if num_jobs > 6 :
+    if num_jobs > 6:
         jobs = jobs[:6]
         num_jobs = len(jobs)
     
     n, m = closest_factors(num_jobs)
-    
-    # Horizontal layout: 1 row, multiple columns
     fig, axes = plt.subplots(n, m, figsize=figsize)
-    # Always make axes a flat 1D array
-    axes = np.array(axes).reshape(-1)
     
     # Handle single job case
     if num_jobs == 1:
-        axes = np.array([axes])
+        axes = [axes]
     else:
-        axes = np.array(axes)
+        axes = np.array(axes).reshape(-1)
     
     for idx, job in enumerate(jobs):
         ax = axes[idx]
@@ -54,28 +45,31 @@ def plot_job_dags(jobs_list, figsize=(20, 5)):
             
             pos = {}
             for node in range(num_tasks):
-                x = (node % 3) - 1  # 3 columns
-                y = -(node // 3)    # multiple rows
+                x = (node % 3) - 1
+                y = -(node // 3)
                 pos[node] = (x, y)
             
             nx.draw_networkx_nodes(G, pos, node_color="#D4AF37", 
-                                  node_size=1500, ax=ax, 
-                                  edgecolors='black', linewidths=2)
+                                node_size=1500, ax=ax, 
+                                edgecolors='black', linewidths=2)
             labels = {node: f"T{node}" for node in G.nodes()}
             nx.draw_networkx_labels(G, pos, labels, font_size=8, ax=ax)
+            
+            # ← ADD THIS:
+            max_row = (num_tasks - 1) // 3
+            ax.set_xlim(-2, 2)
+            ax.set_ylim(-max_row - 1, 1)
             
             ax.set_title(f"Job {job.id} (No DAG - Independent)", fontsize=11, fontweight='bold')
             ax.axis('off')
             continue
         
-        # Convert igraph to networkx - ADD ALL NODES
+        # Convert igraph to networkx
         G = nx.DiGraph()
         
-        # Add ALL nodes first (including isolated ones)
         for node_id in range(job.dag.vcount()):
             G.add_node(node_id)
         
-        # Then add edges
         for edge in job.dag.es:
             source, target = edge.tuple
             weight = edge["weight"] if "weight" in edge.attributes() else 1
@@ -90,21 +84,21 @@ def plot_job_dags(jobs_list, figsize=(20, 5)):
                 preds = list(G.predecessors(node))
                 levels[node] = 1 + max(levels.get(p, 0) for p in preds) if preds else 0
         
-        # Count nodes per level
-        level_counts = {}
-        for node, level in levels.items():
-            level_counts[level] = level_counts.get(level, 0) + 1
-        
-        # Assign positions
+        # Hierarchical layout
         pos = {}
-        level_positions = {level: 0 for level in level_counts}
         max_level = max(levels.values()) if levels else 0
         
-        for node, level in levels.items():
-            x = level_positions[level] - level_counts[level] / 2
-            y = max_level - level
-            pos[node] = (x, y)
-            level_positions[level] += 1
+        for level in range(max_level + 1):
+            nodes_at_level = [n for n, l in levels.items() if l == level]
+            width = len(nodes_at_level)
+            
+            for i, node in enumerate(nodes_at_level):
+                if width > 1:
+                    x = -1 + 2 * (i / (width - 1))
+                else:
+                    x = 0
+                y = -level
+                pos[node] = (x, y)
         
         # Color nodes
         node_colors = []
@@ -139,29 +133,13 @@ def plot_job_dags(jobs_list, figsize=(20, 5)):
         labels = {node: f"T{node}" for node in G.nodes()}
         nx.draw_networkx_labels(G, pos, labels, font_size=7, ax=ax, font_weight='bold')
         
-        # Edge weights (only if there are edges)
+        # Edge weights
         if G.edges():
             edge_labels = nx.get_edge_attributes(G, 'weight')
             nx.draw_networkx_edge_labels(G, pos, edge_labels, font_size=6, ax=ax)
         
         ax.set_title(f"Job {job.id} ({G.number_of_nodes()} tasks)", fontsize=11, fontweight='bold')
-        ax.axis('off')
-        ax.set_aspect('equal')
-
-        xs = [pos[n][0] for n in G.nodes()]
-        ys = [pos[n][1] for n in G.nodes()]
-
-        x_center = (max(xs) + min(xs)) / 2
-        y_center = (max(ys) + min(ys)) / 2
-
-        x_range = max(xs) - min(xs)
-        y_range = max(ys) - min(ys)
-
-        pad = 0.5
-
-        ax.set_xlim(x_center - x_range/2 - pad, x_center + x_range/2 + pad)
-        ax.set_ylim(y_center - y_range/2 - pad, y_center + y_range/2 + pad)
-    
+        ax.axis('on')
     
     fig.suptitle('Job DAG Structures (Green=Entry, Blue=Intermediate, Red=Exit, Gold=Isolated)', 
                  fontsize=13, fontweight='bold', y=1.00)

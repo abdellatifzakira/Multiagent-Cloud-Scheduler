@@ -70,8 +70,8 @@ server_farm = Server_Farm(
 
 #WORKLOAD
 num_jobs = 50
-mean_job_gap = 10
-num_tasks_per_job = 4
+mean_job_gap = 25
+num_tasks_per_job = 6
 arrival_times= np.int32(np.random.exponential(scale=mean_job_gap, size= int(num_jobs)))
 arrival_times = np.cumsum(arrival_times)
 
@@ -82,7 +82,7 @@ jobs = Job.generate_jobs(
     num_tasks_per_job=num_tasks_per_job,
     seed=42,
     time_arrived=arrival_times,
-    edge_probability= 0.05 
+    edge_probability= 0.5
 )
 
 plot_job_dags(jobs_list=jobs)
@@ -93,7 +93,9 @@ RR = RoundRobinScheduler(
     job_manager = JobManager(jobs = jobs),
 )
 
-time_line, cpu_utilization, power_price, server_schedules, data_transfer = RR.schedule()
+time_line, cpu_utilization, power_price, server_schedules, data_transfer, sla_violation = RR.schedule()
+
+
 
 plt.style.use("seaborn-v0_8-darkgrid")
 
@@ -181,63 +183,50 @@ ax4.grid(True, linestyle="--", alpha=0.4)
 # SLA Violation levels, waiting time
 #-------------------------------------
 
-for job in jobs :
-    job.end_time = max([tsk.end_time for tsk in job.tasks.values()])
-
-sla_violation_rate = (
-    np.sum([
-        (job.end_time - job.time_arrived) > job.sla_limit
-        for job in jobs
-    ])
-    / len(jobs)
-) * 100
-
-
-waiting_time = np.mean([
-    tsk.start_time - tsk.arrival_time
-    for job in jobs
-    for tsk in job.tasks.values()
-])
-
-
 ax5 = fig.add_subplot(gs[1,1])
-# Left axis: SLA violation rate
-ax5.bar(
-    [f"SLA Violation : {sla_violation_rate:.2f} %"],
-    [sla_violation_rate],
-    width=0.4,
-    label="Violation Rate (%)"
+ax5.plot(
+    time_line,
+    sla_violation
 )
-
 ax5.set_ylabel(
     "SLA Violation (%)",
     fontsize=8
 )
 
-ax5.set_ylim(
-    0,
-    max(100, sla_violation_rate * 1.2)
-)
-
-# Right axis: waiting time
-ax5_right = ax5.twinx()
-
-ax5_right.bar(
-    [f"Average Waiting : {waiting_time:.2f}"],
-    [waiting_time],
-    width=0.4,
-    alpha=0.6,
-)
-
-ax5_right.set_ylabel(
-    "Waiting Time",
+ax5.set_xlabel(
+    "Time",
     fontsize=8
 )
+
+ax5.set_ylim(
+    0,
+    max(100, max(sla_violation) * 1.2)
+)
+
+
+# ─────────────────────────────────────────────
+# TOP-LEFT: CPU UTILIZATION
+# ─────────────────────────────────────────────
+ax6 = fig.add_subplot(gs[1, 2])
+for s in server_schedules.keys():
+    ax6.plot(
+        time_line,
+        server_schedules[s],
+        linewidth=2.5,
+        marker="o",
+        markersize=3,
+        label=f"Server {s.id}"
+    )
+ax6.set_title("Hosted tasks Over Time", fontsize=8, fontweight="bold")
+ax6.set_ylabel("Hosted tasks", fontsize=8)
+ax6.set_xlabel("Server ID", fontsize=12)
+ax6.grid(True, linestyle="--", alpha=0.4)
+ax6.legend(loc="upper right", fontsize=9)
+
+
 plt.legend()
 plt.tight_layout()
 plt.show()
-
-
 
 
 
@@ -250,7 +239,7 @@ fig = plt.figure(figsize=(18, 12))
 gs = GridSpec(1, 4, figure=fig, hspace=0.35, wspace=0.3)
 
 
-ax6 = fig.add_subplot(gs[0,:])
+ax7 = fig.add_subplot(gs[0,:])
 
 
 # Flatten all tasks
@@ -275,20 +264,20 @@ for task_idx, task in enumerate(all_tasks):
     if server_id is not None:
         schedule_distribution[server_id, task_idx] = 1
 
-im = ax6.imshow(
+im = ax7.imshow(
     schedule_distribution,
     cmap='YlOrRd',
     aspect='auto',
     interpolation='nearest'
 )
 
-ax6.set_xlabel('Task ID', fontsize=8)
-ax6.set_ylabel('Server ID', fontsize=8)
-ax6.set_yticks(range(len(servers_list)))
-ax6.set_yticklabels([f'Server {s.id}' for s in servers_list])
-ax6.set_title('Scheduling Pattern\n(Round-Robin Distribution)', fontsize=8, fontweight="bold")
+ax7.set_xlabel('Task ID', fontsize=8)
+ax7.set_ylabel('Server ID', fontsize=8)
+ax7.set_yticks(range(len(servers_list)))
+ax7.set_yticklabels([f'Server {s.id}' for s in servers_list])
+ax7.set_title('Scheduling Pattern\n(Round-Robin Distribution)', fontsize=8, fontweight="bold")
 
-cbar = plt.colorbar(im, ax=ax6)
+cbar = plt.colorbar(im, ax=ax7)
 cbar.set_label('# Events', fontsize=8)
 
 fig.suptitle('Cloud Scheduler Simulation - Complete Analysis', 
