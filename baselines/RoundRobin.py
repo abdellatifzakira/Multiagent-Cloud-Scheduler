@@ -112,6 +112,7 @@ class RoundRobinScheduler:
         power_price = []
         data_transfer = []
         sla_violation = []
+        workload_std = []
         server_schedules = {s : [] for s in self.server_farm.servers.values()}
         while self.job_manager.workload or len(self.running_tasks)>0 or len(self.ready_tasks)>0:
             for task in self.ready_tasks :
@@ -131,12 +132,20 @@ class RoundRobinScheduler:
             self.running_tasks = self.find_running_tasks()
             data_transfer.append(self.monitor_data_transfer())
             sla_violation.append(self.get_sla_violation_rate())
+            workload_std.append(np.std([cpu_usage[s][_t] for s in cpu_usage.keys()]))
             time_line.append(_t)
             self.server_farm.update_farm_state(t=_t)
             _t += 1
 
         
         
-        return  time_line, cpu_usage, power_price, server_schedules, data_transfer, sla_violation
+        return  (time_line,
+                cpu_usage,
+                power_price,
+                server_schedules,
+                data_transfer,
+                sla_violation,
+                workload_std
+                )
 
 

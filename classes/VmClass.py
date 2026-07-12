@@ -1,3 +1,4 @@
+from collections import deque
 class Vm:
     def __init__(self, id: int, c_cpu: float, c_ram: float, c_storage: float):
 
@@ -13,10 +14,13 @@ class Vm:
         #self.status = 0
 
         self.hosted_task = {}
+        self.pending_tasks = deque()
 
         self.used_cpu = 0.0
         self.used_ram = 0.0
         self.used_storage = 0.0
+        
+        self.max_concurrent_tasks = 5
         
         #self.timer = 0.0
         
@@ -28,7 +32,8 @@ class Vm:
         return (
             self.used_cpu + task.cpu <= self.cpu and
             self.used_ram + task.ram <= self.ram and
-            self.used_storage + task.size <= self.storage
+            self.used_storage + task.size <= self.storage and
+            len(list(self.hosted_task.values())) + 1 <= self.max_concurrent_tasks
         )
 
     # ----------------------------
