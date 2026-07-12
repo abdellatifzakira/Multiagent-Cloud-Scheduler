@@ -102,9 +102,9 @@ plt.style.use("seaborn-v0_8-darkgrid")
 fig = plt.figure(figsize=(18, 12))
 gs = GridSpec(2, 3, figure=fig, hspace=0.35, wspace=0.3)
 
-# ─────────────────────────────────────────────
+# ============================================
 # TOP-LEFT: CPU UTILIZATION
-# ─────────────────────────────────────────────
+# ============================================
 ax1 = fig.add_subplot(gs[0, 0])
 for s in cpu_utilization.keys():
     ax1.plot(
@@ -121,9 +121,9 @@ ax1.set_xlabel("Time", fontsize=12)
 ax1.grid(True, linestyle="--", alpha=0.4)
 ax1.legend(loc="upper right", fontsize=9)
 
-# ─────────────────────────────────────────────
+# =============================================
 # TOP-MIDDLE: DATA TRANSFER
-# ─────────────────────────────────────────────
+# =============================================
 ax2 = fig.add_subplot(gs[0, 1])
 ax2.plot(
     time_line,
@@ -139,9 +139,9 @@ ax2.set_ylabel("Data Transfer", fontsize=8)
 ax2.set_xlabel("Time", fontsize=8)
 ax2.grid(True, linestyle="--", alpha=0.4)
 
-# ─────────────────────────────────────────────
+# =============================================
 # TOP-RIGHT: POWER PRICE
-# ─────────────────────────────────────────────
+# =============================================
 ax3 = fig.add_subplot(gs[0, 2])
 ax3.plot(
     time_line,
@@ -159,9 +159,9 @@ ax3.set_xlabel("Time", fontsize=8)
 ax3.grid(True, linestyle="--", alpha=0.4)
 
 
-# ─────────────────────────────────────────────
+# =============================================
 # BOTTOM-MIDDLE: CUMULATIVE DATA TRANSFER
-# ─────────────────────────────────────────────
+# =============================================
 ax4 = fig.add_subplot(gs[1, 0])
 cumulative_transfer = np.cumsum(data_transfer)
 ax4.plot(
@@ -204,9 +204,9 @@ ax5.set_ylim(
 )
 
 
-# ─────────────────────────────────────────────
+# =============================================
 # TOP-LEFT: CPU UTILIZATION
-# ─────────────────────────────────────────────
+# =============================================
 ax6 = fig.add_subplot(gs[1, 2])
 for s in server_schedules.keys():
     ax6.plot(
@@ -230,9 +230,9 @@ plt.show()
 
 
 
-# ─────────────────────────────────────────────
+# =============================================
 # SCHEDULING HEATMAP
-# ─────────────────────────────────────────────
+# =============================================
 
 plt.style.use("seaborn-v0_8-darkgrid")
 fig = plt.figure(figsize=(18, 12))

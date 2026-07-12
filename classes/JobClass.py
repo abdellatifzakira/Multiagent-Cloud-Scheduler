@@ -235,7 +235,7 @@ class Job:
                     # get edge ID
                     eid = graph.get_eid(node, child)
                     weight = graph.es[eid]["weight"]
-                    print(f"{indent} └───────({weight})─────> {child}")
+                    print(f"{indent} └=======({weight})=====> {child}")
                 self.print_job_layout(subtree, graph, level + 1)
     
     
