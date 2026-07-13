@@ -33,7 +33,7 @@ class Job:
         self.end_time = None
         self.sla_violated = None,
         self.counted = False
-    
+        self.success = False
     def set_time_arrived(self, _t):
         self.time_arrived = _t
         

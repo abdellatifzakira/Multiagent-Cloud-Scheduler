@@ -29,6 +29,7 @@ class Task:
     self.size = size
     self.timer = None
     self.vm = None
+    self.left_retry = 3
     
   
   def advance_timer(self, _t) :
@@ -52,4 +53,12 @@ class Task:
     for child in self.children:
         child.notify_parent_finished(_t)
       
+    
+  
+  
+  def fail_and_cascade(self) :
+    self.status = -1
+    if self.children :
+      for _child in self.children :
+        _child.fail_and_cascade()
     #self.deadline = self.start_time + self.runtime

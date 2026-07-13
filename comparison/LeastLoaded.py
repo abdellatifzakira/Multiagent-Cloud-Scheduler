@@ -1,6 +1,6 @@
 import numpy as np
 
-class RoundRobinScheduler:
+class LeastLoadedScheduler:
     def __init__(self,
                  server_farm = None,
                  data_transfer_manager = None,
@@ -93,6 +93,8 @@ class RoundRobinScheduler:
             return sla_violation_rate
         else :
             return 0
+        
+    
                     
     def monitor_data_transfer(self):
         data_transfer= 0
@@ -103,6 +105,15 @@ class RoundRobinScheduler:
                         data_transfer += self.job_dict[running.job_id].data_transfer_weights[(parent.id,running.id)]
                 running.monitored = True
         return data_transfer
+    
+    
+    def get_least_busy_server(self) :
+        choice = self.servers[0]
+        for server in self.server_farm.servers.values() :
+            if server.cpu_utilization() < choice.cpu_utilization() :
+                choice = server
+        return choice
+
         
     def schedule(self):
         n = len(self.servers)
@@ -116,9 +127,8 @@ class RoundRobinScheduler:
         server_schedules = {s : [] for s in self.server_farm.servers.values()}
         while self.job_manager.workload or len(self.running_tasks)>0 or len(self.ready_tasks)>0:
             for task in self.ready_tasks :
-                    server = self.servers[self.pointer]
-                    success = server.host_task_in_server(task, _t)
-                    self.pointer = (self.pointer + 1) % n
+                    server = self.get_least_busy_server()
+                    server.host_task_in_server(task, _t)
                     
             for server in self.server_farm.servers.values() :
                 server_schedules[server].append(len(list(server.hosted_tasks.keys()))) 
