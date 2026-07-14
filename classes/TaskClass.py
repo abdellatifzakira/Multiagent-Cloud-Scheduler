@@ -16,7 +16,7 @@ class Task:
     self.ram = ram
     self.server_farm_id = None
     self.server = None
-    self.status = status # -1: rejected, 0: finished, 1: ready, 2: running, 3: initialized.
+    self.status = status # -1: rejected, 0: finished, 1: ready, 2: running, 3: initialized, 4: pending.
     self.runtime = runtime
     self.arrival_time = None
     self.start_time = None
@@ -45,7 +45,7 @@ class Task:
     if self.remaining_parents > 0:
         self.remaining_parents -= 1
 
-    if self.remaining_parents == 0:
+    if self.remaining_parents <= 0:
         self.status = 1  # READY
         self.arrival_time = _t
   

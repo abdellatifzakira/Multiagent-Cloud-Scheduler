@@ -62,6 +62,7 @@ class RoundRobinScheduler:
         ready_task = []
         for job in self.jobs :
             ready_task.extend(job.get_running_tasks())
+    
         return ready_task
         
     def populate_servers(self):
@@ -116,12 +117,14 @@ class RoundRobinScheduler:
         server_schedules = {s : [] for s in self.server_farm.servers.values()}
         while self.job_manager.workload or len(self.running_tasks)>0 or len(self.ready_tasks)>0:
             for task in self.ready_tasks :
+
                     server = self.servers[self.pointer]
-                    success = server.host_task_in_server(task, _t)
+                    success = server.add_task_to_queue(task)
+                    server.execute_tasks(_t)
                     self.pointer = (self.pointer + 1) % n
-                    
+
             for server in self.server_farm.servers.values() :
-                server_schedules[server].append(len(list(server.hosted_tasks.keys()))) 
+                server_schedules[server].append(len(list(server.task_queue))) 
                      
             for s in cpu_usage.keys() :
                 cpu_usage[s].append(s.cpu_utilization())
@@ -134,8 +137,11 @@ class RoundRobinScheduler:
             sla_violation.append(self.get_sla_violation_rate())
             workload_std.append(np.std([cpu_usage[s][_t] for s in cpu_usage.keys()]))
             time_line.append(_t)
+                
+            
             self.server_farm.update_farm_state(t=_t)
             _t += 1
+
 
         
         

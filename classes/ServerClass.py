@@ -1,5 +1,5 @@
 import numpy as np
-
+from collections import deque
 try :
     from classes.VmClass import Vm
     from classes.TaskClass import Task
@@ -44,6 +44,8 @@ class Server:
         
         self.hosted_tasks = {}
         self.storage = storage
+        
+        self.task_queue = deque()
 
     def populate_vm(self, vms):
         if vms is None :
@@ -84,15 +86,32 @@ class Server:
         
 
     # Basic Hosting : first in list, first served => to be enhanced
-    def host_task_in_server(self, task, t):
-        if task.status != 1 :
-            return False
-        for vm in self.vms.values():
-            if vm.check_req_constraint(task):
-                self.hosted_tasks[task] = vm
-                task.server = self
-                task.vm = vm
-                return vm.host_task(task, t)
+    def execute_tasks(self, t):
+        while self.task_queue:
+            task = self.task_queue[0]  # look at first task
+
+            if task.status == 4: # must be pending
+                hosted = False
+                for vm in self.vms.values():
+                    if vm.check_req_constraint(task):
+                        if vm.host_task(task, t):
+                            self.hosted_tasks[task] = vm
+                            task.server = self
+                            task.vm = vm
+                            self.task_queue.popleft()
+                            hosted = True
+                            break
+
+                if not hosted:
+                    break
+            else:
+                self.task_queue.popleft()
+        
+    def add_task_to_queue(self,task) :
+        if task.size + self.get_storage_usage() <= self.storage :
+            task.status = 4 # waiting in the queue
+            self.task_queue.append(task)
+            return True
         return False
     
     def release_task_from_server(self, task):
@@ -105,7 +124,8 @@ class Server:
     def ram_utilization(self):
         return np.sum(vm.used_ram for vm in self.vms.values())
     def storage_utilization(self):
-        return np.sum(vm.used_storage for vm in self.vms.values())
+        return (np.sum(vm.used_storage for vm in self.vms.values()) +
+                np.sum(_tsk.size for _tsk in self.task_queue))
     
     
     # at first we try simple linear power consumption

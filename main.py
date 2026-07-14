@@ -9,6 +9,7 @@ import numpy as np
 from matplotlib.gridspec import GridSpec
 from utilities.helpers import *
 from utilities.JobManager import JobManager
+import copy
 
 # Helper
 def smooth_by_bins(x, y):
@@ -27,66 +28,124 @@ def smooth_by_bins(x, y):
     return [np.array(x_smooth), np.array(y_smooth)]
 
 
-#INFRASTRUCTURE
-server_1 = Server(
+#INFRASTRUCTURE RR
+server_1_RR = Server(
     c_cpu=1.0,
     c_ram=1.0,
     alpha = 0.02,
-    storage= 1024
+    storage= 4096
 )
-server_2 = Server(
+server_2_RR = Server(
     c_cpu=1.0,
     c_ram=1.0,
     alpha = 0.03,
     storage= 2048
 )
-server_3 = Server(
+server_3_RR = Server(
     c_cpu=1.0,
     c_ram=1.0,
     alpha = 0.05,
-    storage= 4096
+    storage= 1024
 )
-server_4 = Server(
+server_4_RR = Server(
     c_cpu=1.0,
     c_ram=1.0,
     alpha = 0.02,
     storage= 1024
 )
 
-server_1.spawn_vm_group(
+server_1_RR.spawn_vm_group(
     cpu = [0.2, 0.3, 0.4],
     ram = [0.3, 0.3, 0.3],
     storage=[512, 128, 128]
 )
-server_2.spawn_vm_group(
+server_2_RR.spawn_vm_group(
     cpu = [0.55, 0.3],
     ram = [0.3, 0.2],
     storage=[512, 512]
 )
-server_3.spawn_vm_group(
-    cpu = [0.4,0.5],
-    ram = [0.5,0.4],
-    storage=[512, 1024]
+server_3_RR.spawn_vm_group(
+    cpu = [0.2, 0.3, 0.4],
+    ram = [0.3, 0.3, 0.3],
+    storage=[512, 128, 128]
 )
 
-server_4.spawn_vm_group(
+server_4_RR.spawn_vm_group(
     cpu = [0.2, 0.3, 0.4],
     ram = [0.3, 0.3, 0.3],
     storage=[256, 512, 128]
 )
 
-servers_list = [server_1, server_2, server_3, server_4]
+servers_list_RR = [server_1_RR, server_2_RR, server_3_RR, server_4_RR]
 #servers_list = [server_1, server_2]
 
-server_farm = Server_Farm(
+server_farm_RR = Server_Farm(
     id =  0,
-    servers= servers_list,
-    num_servers=len(servers_list)
+    servers= servers_list_RR,
+    num_servers=len(servers_list_RR)
+)
+
+
+#INFRASTRUCTURE LL
+server_1_LL = Server(
+    c_cpu=1.0,
+    c_ram=1.0,
+    alpha = 0.02,
+    storage= 4096
+)
+server_2_LL = Server(
+    c_cpu=1.0,
+    c_ram=1.0,
+    alpha = 0.03,
+    storage= 2048
+)
+server_3_LL = Server(
+    c_cpu=1.0,
+    c_ram=1.0,
+    alpha = 0.05,
+    storage= 1024
+)
+server_4_LL = Server(
+    c_cpu=1.0,
+    c_ram=1.0,
+    alpha = 0.02,
+    storage= 1024
+)
+
+server_1_LL.spawn_vm_group(
+    cpu = [0.2, 0.3, 0.4],
+    ram = [0.3, 0.3, 0.3],
+    storage=[512, 128, 128]
+)
+server_2_LL.spawn_vm_group(
+    cpu = [0.55, 0.3],
+    ram = [0.3, 0.2],
+    storage=[512, 512]
+)
+server_3_LL.spawn_vm_group(
+    cpu = [0.2, 0.3, 0.4],
+    ram = [0.3, 0.3, 0.3],
+    storage=[512, 128, 128]
+)
+
+server_4_LL.spawn_vm_group(
+    cpu = [0.2, 0.3, 0.4],
+    ram = [0.3, 0.3, 0.3],
+    storage=[256, 512, 128]
+)
+
+servers_list_LL = [server_1_LL, server_2_LL, server_3_LL, server_4_LL]
+#servers_list = [server_1, server_2]
+
+server_farm_LL = Server_Farm(
+    id =  0,
+    servers= servers_list_LL,
+    num_servers=len(servers_list_LL)
 )
 
 
 #WORKLOAD
-num_jobs = 360
+num_jobs = 300
 mean_job_gap = 5
 num_tasks_per_job = 5
 jobs_per_phase = num_jobs // 3
@@ -166,15 +225,18 @@ plot_job_dags(jobs_list=jobs_RR)
 
 
 RR = RoundRobinScheduler(
-    server_farm=server_farm,
+    server_farm= server_farm_RR,
     job_manager = JobManager(jobs = jobs_RR),
 )
 
 time_line_RR, cpu_utilization_RR, power_price_RR, server_schedules_RR, data_transfer_RR, sla_violation_RR, workload_std_RR = RR.schedule()
 
+mode = 'CPU'
 LL = LeastLoadedScheduler(
-    server_farm=server_farm,
+    server_farm= server_farm_LL,
     job_manager = JobManager(jobs = jobs_LL),
+    mode= mode,
+    sorting='RUNTIME'
 )
 
 time_line_LL, cpu_utilization_LL, power_price_LL, server_schedules_LL, data_transfer_LL, sla_violation_LL, workload_std_LL = LL.schedule()
@@ -191,20 +253,20 @@ gs = GridSpec(2, 3, figure=fig, hspace=0.35, wspace=0.3)
 ax1 = fig.add_subplot(gs[0, 0])
 ax1.plot(
         time_line_RR,
-        cpu_utilization_RR[server_1],
+        cpu_utilization_RR[server_1_RR],
         linewidth=2.5,
         marker="o",
         markersize=3,
-        label=f"Server {server_1.id} : RR"
+        label=f"Server {server_1_RR.id} : RR"
     )
 
 ax1.plot(
         time_line_LL,
-        cpu_utilization_LL[server_1],
+        cpu_utilization_LL[server_1_LL],
         linewidth=2.5,
         marker="o",
         markersize=3,
-        label=f"Server {server_1.id} : LL"
+        label=f"Server {server_1_LL.id} : LL"
     )
 ax1.set_title("CPU Utilization Over Time", fontsize=8, fontweight="bold")
 ax1.set_ylabel("CPU Utilization", fontsize=6)
@@ -348,25 +410,25 @@ ax5.legend(loc="upper left", fontsize=6)
 ax6 = fig.add_subplot(gs[1, 2])
 
 ax6.plot(
-        smooth_by_bins(time_line_RR, server_schedules_RR[server_1])[0],
-        smooth_by_bins(time_line_RR, server_schedules_RR[server_1])[1],
+        time_line_RR,
+        server_schedules_RR[server_1_RR],
         linewidth=2.5,
         marker="o",
         markersize=3,
-        label=f"Server {server_1.id} : RR"
+        label=f"Server {server_1_RR.id} : RR"
     )
 
 ax6.plot(
-        smooth_by_bins(time_line_LL, server_schedules_LL[server_1])[0],
-        smooth_by_bins(time_line_LL, server_schedules_LL[server_1])[1],
+        time_line_LL,
+        server_schedules_LL[server_1_LL],
         linewidth=2.5,
         marker="o",
         markersize=3,
-        label=f"Server {server_1.id} : LL"
+        label=f"Server {server_1_LL.id} : LL"
     )
 
-ax6.set_title("Hosted tasks Over Time", fontsize=8, fontweight="bold")
-ax6.set_ylabel("Hosted tasks", fontsize=6)
+ax6.set_title("Queued tasks Over Time", fontsize=8, fontweight="bold")
+ax6.set_ylabel("Queued tasks", fontsize=6)
 ax6.set_xlabel("Time", fontsize=6)
 ax6.grid(True, linestyle="--", alpha=0.4)
 ax6.legend(loc="upper left", fontsize=6)

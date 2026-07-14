@@ -36,6 +36,7 @@ class Vm:
             len(list(self.hosted_task.values())) + 1 <= self.max_concurrent_tasks
         )
 
+
     # ----------------------------
     # HOST TASK
     # ----------------------------
@@ -53,7 +54,6 @@ class Vm:
         
         task.status = 2  # running
         task.start_time = t
-        
         #self.timer = task.runtime
         
         return True
@@ -69,19 +69,20 @@ class Vm:
     # FINISH TASK
     # ----------------------------
     def release_task(self,task, t):
-        if self.hosted_task is {} or self.hosted_task[task] is None :
+        if task not in list(self.hosted_task.keys()):
             return False
 
         self.used_cpu -= task.cpu
         self.used_ram -= task.ram
         self.used_storage -= task.size
-
-        task.status = 0  # Finished
-        task.end_time = t
+        
         task.on_finished(t) # Inter-tasks notification 
+        task.status = 0
+        task.end_time = t
 
         self.hosted_task.pop(task)
         self.server.hosted_tasks.pop(task)
+    
         
         #self.status = 0  # idle again
         

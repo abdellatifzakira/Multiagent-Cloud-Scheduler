@@ -161,9 +161,9 @@ class Job:
         for job_id in range(num_jobs):
             
             # Random task parameters
-            cpu_req = [round(np.random.uniform(0.01, 0.2), 3) for _ in range(num_tasks_per_job)]
-            ram_req = [round(np.random.uniform(0.01, 0.2), 3) for _ in range(num_tasks_per_job)]
-            runtime = [round(np.random.uniform(5, 100), 0) for _ in range(num_tasks_per_job)]
+            cpu_req = [round(np.random.uniform(0.01, 0.1), 3) for _ in range(num_tasks_per_job)]
+            ram_req = [round(np.random.uniform(0.01, 0.1), 3) for _ in range(num_tasks_per_job)]
+            runtime = [round(np.random.uniform(5,100), 0) for _ in range(num_tasks_per_job)]
             sizes = [round(np.random.uniform(32, 128), 0) for _ in range(num_tasks_per_job)]
             
             # Generate random DAG edges
@@ -377,6 +377,7 @@ class Job:
         for task in self.tasks.values():
             if task.status == 2:
                 running.append(task)
+        
 
         return running
 

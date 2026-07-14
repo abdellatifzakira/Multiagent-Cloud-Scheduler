@@ -1,11 +1,13 @@
 import numpy as np
-
+import random
 class LeastLoadedScheduler:
     def __init__(self,
                  server_farm = None,
                  data_transfer_manager = None,
                  margin = 0.0,
                  job_manager = None,
+                 mode : str = 'CPU',
+                 sorting : str = 'FIFO'
                  ):
         self.server_farm = server_farm
         self.job_manager = job_manager
@@ -17,8 +19,12 @@ class LeastLoadedScheduler:
         self.ready_tasks = self.find_entry_tasks()
         self.pointer = 0
         self.running_tasks = []
+        self.mode = mode
+        self.sorting = sorting
+        
+        assert mode in ['CPU', 'RAM', 'QUEUE']
+        assert sorting in ['FIFO', 'CPU', 'RUNTIME']
 
-    
 
     
     def find_entry_tasks(self):
@@ -53,9 +59,19 @@ class LeastLoadedScheduler:
                     ready_task.append(task)
         
          # sort by arrival time
-        ready_task.sort(
-            key=lambda task: task.arrival_time
-        )
+        match self.sorting :
+            case 'FIFO' :
+                ready_task.sort(
+                    key=lambda task: task.arrival_time
+                )
+            case 'CPU' :
+                ready_task.sort(
+                    key=lambda task: task.cpu
+                )
+            case 'RUNTIME' :
+                ready_task.sort(
+                    key=lambda task: task.runtime
+                )
         return ready_task
     
     def find_running_tasks(self):
@@ -106,14 +122,28 @@ class LeastLoadedScheduler:
                 running.monitored = True
         return data_transfer
     
-    
-    def get_least_busy_server(self) :
-        choice = self.servers[0]
-        for server in self.server_farm.servers.values() :
-            if server.cpu_utilization() < choice.cpu_utilization() :
-                choice = server
-        return choice
+    def get_least_busy_server(self):
+        servers = list(self.server_farm.servers.values())
 
+        match self.mode:
+            case 'QUEUE':
+                loads = [
+                    (s, sum(tsk.runtime for tsk in s.task_queue))
+                    for s in servers
+                ]
+            case 'CPU':
+                loads = [(s, s.cpu_utilization()) for s in servers]
+
+            case 'RAM':
+                loads = [(s, s.ram_utilization()) for s in servers]
+
+        min_load = min(loads, key=lambda x: x[1])[1]
+
+        candidates = [s for s, l in loads if l == min_load]
+
+        return random.choice(candidates)
+        
+        
         
     def schedule(self):
         n = len(self.servers)
@@ -125,13 +155,14 @@ class LeastLoadedScheduler:
         sla_violation = []
         workload_std = []
         server_schedules = {s : [] for s in self.server_farm.servers.values()}
-        while self.job_manager.workload or len(self.running_tasks)>0 or len(self.ready_tasks)>0:
+        while self.job_manager.workload or len(self.running_tasks) > 0 or len(self.ready_tasks)>0:
             for task in self.ready_tasks :
                     server = self.get_least_busy_server()
-                    server.host_task_in_server(task, _t)
+                    server.add_task_to_queue(task)
+                    server.execute_tasks(_t)
                     
             for server in self.server_farm.servers.values() :
-                server_schedules[server].append(len(list(server.hosted_tasks.keys()))) 
+                server_schedules[server].append(len(list(server.task_queue))) 
                      
             for s in cpu_usage.keys() :
                 cpu_usage[s].append(s.cpu_utilization())
