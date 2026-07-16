@@ -143,7 +143,7 @@ num_jobs = 450
 mean_job_gap = 5
 num_tasks_per_job = 5
 jobs_per_phase = num_jobs // 3
-edge_probability =  0.0
+edge_probability =  0.5
 
 seed_RR = 42
 np.random.seed(seed_RR)
@@ -208,6 +208,8 @@ arrival_times_LL = np.concatenate([
 ])
 
 
+
+
 jobs_LL = Job.generate_jobs(
     num_jobs=num_jobs, 
     num_tasks_per_job=num_tasks_per_job,
@@ -236,9 +238,6 @@ Environment_LL = Environment(server_farm= server_farm_LL,
 
 
 
-
-
-
 print("RoundRobin : SCHEDULING - STARTS")
 results_RR = Environment_RR.run()
 print(f"LeastLoaded {mode = }, {sorting = } : SCHEDULING - STARTS")
@@ -251,6 +250,6 @@ results_LL['NAME'] = "LL"
 print(f"TOTAL SUCCESSFUL JOBS RR : {sum(j.success for j in jobs_RR)}/{num_jobs}")
 print(f"TOTAL SUCCESSFUL JOBS LL : {sum(j.success for j in jobs_LL)}/{num_jobs}")
 
+scenarios_edges = [max(arrival_light), max(arrival_medium)]
 
-
-plot_results([results_RR, results_LL])
+plot_results([results_RR, results_LL], num_bins = 100, scenarios_edges = scenarios_edges)

@@ -20,7 +20,7 @@ def smooth_by_bins(x, y, bin_count=50):
 
 
 
-def plot_results(results_list, num_bins = 50):
+def plot_results(results_list, num_bins = 50, scenarios_edges = []):
 
     plt.style.use("seaborn-v0_8-darkgrid")
 
@@ -219,6 +219,19 @@ def plot_results(results_list, num_bins = 50):
         ax4,ax5,ax6, ax7, ax8
     ]:
         ax.grid(True, linestyle="--", alpha=0.4)
+    
+    
+    for edge in scenarios_edges :
+        
+        ax1.axvline(x = edge, ymin=0, color = "#0004ff", linestyle = "--")
+        ax2.axvline(x = edge, ymin=0, color = "#0004ff", linestyle = "--")
+        ax3.axvline(x = edge, ymin=0, color = "#0004ff", linestyle = "--")
+        ax4.axvline(x = edge, ymin=0, color = "#0004ff", linestyle = "--")
+        ax5.axvline(x = edge, ymin=0, color = "#0004ff", linestyle = "--")
+        ax6.axvline(x = edge, ymin=0, color = "#0004ff", linestyle = "--")
+        ax7.axvline(x = edge, ymin=0, color = "#0004ff", linestyle = "--")
+        ax8.axvline(x = edge, ymin=0, color = "#0004ff", linestyle = "--")
+        
 
 
     plt.tight_layout()

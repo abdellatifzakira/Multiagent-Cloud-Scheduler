@@ -12,7 +12,7 @@ class LeastLoadedScheduler:
         self.sorting = sorting
 
         
-        assert mode in ['CPU', 'RAM', 'QUEUE'], "[INVALID MODE]\nAVAILABLE MODES : CPU | RAM | QUEUE "
+        assert mode in ['CPU', 'RAM', 'QUEUE', 'HYBRID'], "[INVALID MODE]\nAVAILABLE MODES : CPU | RAM | QUEUE | HYBRID "
         assert sorting in ['FIFO', 'CPU', 'RUNTIME'], "[INVALID INPUT]\nAVAILABLE SORTING PARAMETERS : FIFO | CPU | RUNTIME"
 
 
@@ -74,6 +74,30 @@ class LeastLoadedScheduler:
 
             case 'RAM' :
                 loads = [(s, s.ram_utilization()) for s in servers]
+                
+            
+            case 'HYBRID' :
+                loads = []
+                for s in servers:
+                    current = s.cpu_utilization()
+
+                    max_available_vm_cpu = max(
+                        vm.cpu - vm.used_cpu
+                        for vm in s.vms.values()
+                    )
+                    
+                    queue_pressure = np.sum(
+                        [tsk.cpu*math.exp(-0.3*i) for i, tsk in enumerate(s.task_queue)]
+                    )
+                    score_cpu = current + max(
+                        0,
+                        queue_pressure - max_available_vm_cpu
+                    )
+                    
+                    score_queue = (sum(tsk.runtime for tsk in s.task_queue) + sum(tsk.timer for tsk in s.hosted_tasks.keys()))/sum(vm.max_concurrent_tasks for vm in s.vms.values())
+
+                    loads.append((s, 0.3*score_cpu + 0.7*score_queue))
+                
 
         min_load = min(loads, key=lambda x: x[1])[1]
 
