@@ -46,14 +46,12 @@ class Vm:
         # Initialize the task internal timer 
         task.timer = task.runtime
         
-        #self.status = 1  # busy
 
         self.used_cpu += task.cpu
         self.used_ram += task.ram
         self.used_storage += task.size
         
         task.status = 2  # running
-        #self.timer = task.runtime
         
         return True
     
