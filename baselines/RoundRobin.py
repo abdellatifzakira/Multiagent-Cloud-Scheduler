@@ -4,22 +4,20 @@ class RoundRobinScheduler:
     def __init__(self,
                  server_farm = None,
                  data_transfer_manager = None,
-                 margin = 0.0,
                  job_manager = None,
                  ):
         self.server_farm = server_farm
         self.job_manager = job_manager
         self.jobs = self.job_manager.update_job_list(0)
         self.job_dict = self.populate_job(self.jobs)
-        self.margin = margin
         self.data_transfer_manager = data_transfer_manager
         self.servers = self.populate_servers()
         self.ready_tasks = self.find_entry_tasks()
         self.pointer = 0
         self.running_tasks = []
+        self.pending_tasks = 0
 
     
-
     
     def find_entry_tasks(self):
         ready_tasks = []
@@ -64,19 +62,28 @@ class RoundRobinScheduler:
             ready_task.extend(job.get_running_tasks())
     
         return ready_task
+    
+    
         
     def populate_servers(self):
         return self.server_farm.servers
     
     def populate_job(self, jobs) :
         return {job.id : job for job in jobs}
-    
-    def get_finished_jobs(self) :
-        _finished_jobs = []
-        for _job in self.jobs :
-            if {0} == set(tsk.status for tsk in _job.tasks.values()) :
-                _finished_jobs.append(_job)
-        return _finished_jobs
+
+    def get_finished_jobs(self):
+        finished_jobs = []
+
+        for job in self.jobs:
+
+            if all(
+                task.status == 0 and task.end_time is not None
+                for task in job.tasks.values()
+            ):
+                finished_jobs.append(job)
+
+        return finished_jobs
+
             
     
     def get_sla_violation_rate(self) :
@@ -84,6 +91,9 @@ class RoundRobinScheduler:
         if self.get_finished_jobs() != []:
             for job in self.get_finished_jobs() :
                 job.end_time = max([tsk.end_time for tsk in job.tasks.values()])
+                if job.end_time is None :
+                    print("END TIME NOT SET")
+                    exit(-1)
             sla_violation_rate = (
                         np.sum([
                             (job.end_time - job.time_arrived) > job.sla_limit
@@ -91,6 +101,7 @@ class RoundRobinScheduler:
                         ])
                         / len(self.get_finished_jobs())
                     ) * 100
+            
             return sla_violation_rate
         else :
             return 0
@@ -113,19 +124,24 @@ class RoundRobinScheduler:
         power_price = []
         data_transfer = []
         sla_violation = []
+        sla_violation_var = []
         workload_std = []
         server_schedules = {s : [] for s in self.server_farm.servers.values()}
-        while self.job_manager.workload or len(self.running_tasks)>0 or len(self.ready_tasks)>0:
+        while self.job_manager.workload or len(self.running_tasks)>0 or len(self.ready_tasks)>0 or self.pending_tasks > 0:
+            
+            self.pending_tasks = 0
+            
             for task in self.ready_tasks :
 
                     server = self.servers[self.pointer]
-                    success = server.add_task_to_queue(task)
-                    server.execute_tasks(_t)
+                    success = server.add_task_to_queue(task, _t)
                     self.pointer = (self.pointer + 1) % n
 
             for server in self.server_farm.servers.values() :
-                server_schedules[server].append(len(list(server.task_queue))) 
-                     
+                #server_schedules[server].append(len(list(server.task_queue))) 
+                server.execute_tasks(_t)
+                server_schedules[server].append(server.get_storage_usage())
+                self.pending_tasks += len(list(server.task_queue))
             for s in cpu_usage.keys() :
                 cpu_usage[s].append(s.cpu_utilization())
             
@@ -135,9 +151,10 @@ class RoundRobinScheduler:
             self.running_tasks = self.find_running_tasks()
             data_transfer.append(self.monitor_data_transfer())
             sla_violation.append(self.get_sla_violation_rate())
+            sla_violation_var = np.diff(sla_violation, prepend=sla_violation[0])
             workload_std.append(np.std([cpu_usage[s][_t] for s in cpu_usage.keys()]))
             time_line.append(_t)
-                
+            
             
             self.server_farm.update_farm_state(t=_t)
             _t += 1
@@ -151,6 +168,7 @@ class RoundRobinScheduler:
                 server_schedules,
                 data_transfer,
                 sla_violation,
+                sla_violation_var,
                 workload_std
                 )
 

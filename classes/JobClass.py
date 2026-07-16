@@ -13,7 +13,7 @@ class Job:
         time_arrived: float = None,
         data_transfer_weights: dict = None,
         id: int = None,
-        sla_limit = 200,
+        sla_factor= 1.2,
 
     ):
         if id is None:
@@ -29,11 +29,12 @@ class Job:
         self.data_transfer_weights = data_transfer_weights
         self.total_tasks = len(self.tasks) if tasks is not None else 0
         self.dag = self.build_dag()
-        self.sla_limit = sla_limit
         self.end_time = None
         self.sla_violated = None,
         self.counted = False
         self.success = False
+        self.sla_factor = sla_factor
+        self.sla_limit = None
     def set_time_arrived(self, _t):
         self.time_arrived = _t
         
@@ -133,6 +134,8 @@ class Job:
             if tsk.remaining_parents == 0 :
                 tsk.arrival_time = job.time_arrived
                 tsk.status = 1
+        
+        job.sla_limit = job.get_time_consuming_path()[1] * job.sla_factor
         return job
     
     
@@ -264,6 +267,8 @@ class Job:
     
     def get_direct_paths_runtime(self):
         graph = self.dag
+        if graph is None:
+            return None
         roots = [v.index for v in graph.vs if graph.degree(v, mode="in") == 0]
         all_paths = {}
         def dfs(node, path, runtime):
@@ -338,7 +343,7 @@ class Job:
     def get_time_consuming_path(self):
         runs = self.get_direct_paths_runtime()
         if not runs:
-            return None
+            return (0,max(tsk.runtime for tsk in self.tasks.values()))
         most_time_consuming_path = max(runs.items(), key=lambda item: item[1])
         return most_time_consuming_path
     

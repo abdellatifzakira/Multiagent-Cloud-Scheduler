@@ -9,15 +9,15 @@ import numpy as np
 from matplotlib.gridspec import GridSpec
 from utilities.helpers import *
 from utilities.JobManager import JobManager
-import copy
+import random
 
 # Helper
-def smooth_by_bins(x, y):
-    bin_size= len(x)//50
+def smooth_by_bins(x, y, bin_count = 50):
+    bin_size= len(x)//bin_count
     x_smooth = []
     y_smooth = []
 
-    for i in range(0, len(y), bin_size):
+    for i in range(0, len(y), bin_size,):
         y_bin = y[i:i+bin_size]
         x_bin = x[i:i+bin_size]
 
@@ -32,32 +32,36 @@ def smooth_by_bins(x, y):
 server_1_RR = Server(
     c_cpu=1.0,
     c_ram=1.0,
-    alpha = 0.02,
-    storage= 4096
+    alpha = 25,
+    beta=1.2,
+    storage= 512
 )
 server_2_RR = Server(
     c_cpu=1.0,
     c_ram=1.0,
-    alpha = 0.03,
+    alpha = 50,
+    beta=1.5,
     storage= 2048
 )
 server_3_RR = Server(
     c_cpu=1.0,
     c_ram=1.0,
-    alpha = 0.05,
+    alpha = 40,
+    beta= 2,
     storage= 1024
 )
 server_4_RR = Server(
     c_cpu=1.0,
     c_ram=1.0,
-    alpha = 0.02,
+    alpha = 15,
+    beta= 1.8,
     storage= 1024
 )
 
 server_1_RR.spawn_vm_group(
     cpu = [0.2, 0.3, 0.4],
     ram = [0.3, 0.3, 0.3],
-    storage=[512, 128, 128]
+    storage=[128, 128, 128]
 )
 server_2_RR.spawn_vm_group(
     cpu = [0.55, 0.3],
@@ -77,7 +81,7 @@ server_4_RR.spawn_vm_group(
 )
 
 servers_list_RR = [server_1_RR, server_2_RR, server_3_RR, server_4_RR]
-#servers_list = [server_1, server_2]
+
 
 server_farm_RR = Server_Farm(
     id =  0,
@@ -90,32 +94,36 @@ server_farm_RR = Server_Farm(
 server_1_LL = Server(
     c_cpu=1.0,
     c_ram=1.0,
-    alpha = 0.02,
-    storage= 4096
+    alpha = 25,
+    beta=1.2,
+    storage= 512
 )
 server_2_LL = Server(
     c_cpu=1.0,
     c_ram=1.0,
-    alpha = 0.03,
+    alpha = 50,
+    beta=1.5,
     storage= 2048
 )
 server_3_LL = Server(
     c_cpu=1.0,
     c_ram=1.0,
-    alpha = 0.05,
+    alpha = 40,
+    beta= 2,
     storage= 1024
 )
 server_4_LL = Server(
     c_cpu=1.0,
     c_ram=1.0,
-    alpha = 0.02,
+    alpha = 15,
+    beta= 1.8,
     storage= 1024
 )
 
 server_1_LL.spawn_vm_group(
     cpu = [0.2, 0.3, 0.4],
     ram = [0.3, 0.3, 0.3],
-    storage=[512, 128, 128]
+    storage=[128, 128, 128]
 )
 server_2_LL.spawn_vm_group(
     cpu = [0.55, 0.3],
@@ -135,7 +143,7 @@ server_4_LL.spawn_vm_group(
 )
 
 servers_list_LL = [server_1_LL, server_2_LL, server_3_LL, server_4_LL]
-#servers_list = [server_1, server_2]
+
 
 server_farm_LL = Server_Farm(
     id =  0,
@@ -145,9 +153,9 @@ server_farm_LL = Server_Farm(
 
 
 #WORKLOAD
-num_jobs = 300
+num_jobs = 180
 mean_job_gap = 5
-num_tasks_per_job = 5
+num_tasks_per_job = 15
 jobs_per_phase = num_jobs // 3
 
 seed_RR = 42
@@ -164,7 +172,7 @@ medium_gap = np.ceil(
 arrival_medium = np.cumsum(medium_gap) + arrival_light[-1]
 # Surge
 surge_gap = np.ceil(
-    np.random.exponential(mean_job_gap, jobs_per_phase)
+    np.random.exponential(mean_job_gap/2, jobs_per_phase)
 ).astype(int)
 arrival_surge = np.cumsum(surge_gap) + arrival_medium[-1]
 
@@ -180,7 +188,7 @@ jobs_RR = Job.generate_jobs(
     num_tasks_per_job=num_tasks_per_job,
     seed=42,
     time_arrived=arrival_times_RR,
-    edge_probability= 0.5
+    edge_probability= 0.05
 )
 
 
@@ -188,7 +196,7 @@ jobs_RR = Job.generate_jobs(
 
 
 
-seed_LL = 123
+seed_LL = 42
 np.random.seed(seed_LL)
 # Light
 light_gap = np.ceil(
@@ -202,7 +210,7 @@ medium_gap = np.ceil(
 arrival_medium = np.cumsum(medium_gap) + arrival_light[-1]
 # Surge
 surge_gap = np.ceil(
-    np.random.exponential(mean_job_gap, jobs_per_phase)
+    np.random.exponential(mean_job_gap/2, jobs_per_phase)
 ).astype(int)
 arrival_surge = np.cumsum(surge_gap) + arrival_medium[-1]
 
@@ -216,12 +224,14 @@ arrival_times_LL = np.concatenate([
 jobs_LL = Job.generate_jobs(
     num_jobs=num_jobs, 
     num_tasks_per_job=num_tasks_per_job,
-    seed=123,
+    seed=42,
     time_arrived=arrival_times_LL,
-    edge_probability= 0.5
+    edge_probability= 0.05
 )
 
-plot_job_dags(jobs_list=jobs_RR)
+all_jobs = jobs_LL + jobs_RR
+random.shuffle(all_jobs)
+plot_job_dags(jobs_list = all_jobs)
 
 
 RR = RoundRobinScheduler(
@@ -229,17 +239,235 @@ RR = RoundRobinScheduler(
     job_manager = JobManager(jobs = jobs_RR),
 )
 
-time_line_RR, cpu_utilization_RR, power_price_RR, server_schedules_RR, data_transfer_RR, sla_violation_RR, workload_std_RR = RR.schedule()
-
-mode = 'CPU'
+mode = 'QUEUE'
+sorting='FIFO'
 LL = LeastLoadedScheduler(
     server_farm= server_farm_LL,
     job_manager = JobManager(jobs = jobs_LL),
     mode= mode,
-    sorting='RUNTIME'
+    sorting=sorting
 )
 
-time_line_LL, cpu_utilization_LL, power_price_LL, server_schedules_LL, data_transfer_LL, sla_violation_LL, workload_std_LL = LL.schedule()
+print("RoundRobin : SCHEDULING - STARTS")
+
+(time_line_RR, cpu_utilization_RR,
+ power_price_RR, server_schedules_RR,
+ data_transfer_RR, sla_violation_RR,
+ sla_violation_var_RR, workload_std_RR) = RR.schedule()
+
+
+
+print(f"LeastLoaded {mode = }, {sorting = } : SCHEDULING - STARTS")
+
+(time_line_LL, cpu_utilization_LL,
+power_price_LL, server_schedules_LL,
+data_transfer_LL, sla_violation_LL,
+sla_violation_var_LL , workload_std_LL ) = LL.schedule()
+
+
+##########################################
+
+
+
+def evaluate_scheduler(
+        name,
+        scheduler,
+        jobs,
+        time_line,
+        cpu_usage,
+        power_price,
+        data_transfer,
+        sla_violation,
+        workload_std
+):
+
+    print("\n" + "="*60)
+    print(f"METRICS : {name}")
+    print("="*60)
+
+
+    # =========================
+    # Job completion metrics
+    # =========================
+
+    finished_jobs = scheduler.get_finished_jobs()
+
+    print("\n--- JOB COMPLETION ---")
+
+    print(
+        f"Finished jobs : {len(finished_jobs)}/{len(jobs)}"
+    )
+
+    if finished_jobs:
+
+        completion_times = np.array([
+            job.end_time - job.time_arrived
+            for job in finished_jobs
+        ])
+
+        print(
+            f"Makespan : {max(job.end_time for job in finished_jobs)}"
+        )
+
+        print(
+            f"Average completion time : {np.mean(completion_times):.2f}"
+        )
+
+        print(
+            f"Median completion time : {np.median(completion_times):.2f}"
+        )
+
+        print(
+            f"P95 completion time : {np.percentile(completion_times,95):.2f}"
+        )
+
+
+    # =========================
+    # SLA metrics
+    # =========================
+
+    print("\n--- SLA ---")
+
+    print(
+        f"Final SLA violation : {sla_violation[-1]:.2f}%"
+    )
+
+    print(
+        f"Average SLA violation : {np.mean(sla_violation):.2f}%"
+    )
+
+    print(
+        f"Maximum SLA violation : {np.max(sla_violation):.2f}%"
+    )
+
+
+    if finished_jobs:
+
+        sla_ratios = np.array([
+            (job.end_time-job.time_arrived)
+            /
+            job.sla_limit
+            for job in finished_jobs
+        ])
+
+        print(
+            f"Average SLA delay ratio : {np.mean(sla_ratios):.3f}"
+        )
+
+        print(
+            f"P95 SLA delay ratio : {np.percentile(sla_ratios,95):.3f}"
+        )
+
+
+    # =========================
+    # CPU metrics
+    # =========================
+
+    print("\n--- CPU ---")
+
+    all_cpu = np.concatenate(
+        [
+            np.array(v)
+            for v in cpu_usage.values()
+        ]
+    )
+
+    print(
+        f"Average CPU utilization : {np.mean(all_cpu):.3f}"
+    )
+
+    print(
+        f"Peak CPU utilization : {np.max(all_cpu):.3f}"
+    )
+
+    print(
+        f"CPU utilization std : {np.mean(workload_std):.4f}"
+    )
+
+    print(
+        f"Maximum workload std : {np.max(workload_std):.4f}"
+    )
+
+
+    # =========================
+    # Power
+    # =========================
+
+    print("\n--- POWER ---")
+
+    print(
+        f"Total power cost : {np.sum(power_price):.2f}"
+    )
+
+    print(
+        f"Average power cost : {np.mean(power_price):.3f}"
+    )
+
+    print(
+        f"Peak power cost : {np.max(power_price):.3f}"
+    )
+
+
+    # =========================
+    # Network
+    # =========================
+
+    print("\n--- NETWORK ---")
+
+    print(
+        f"Total data transfer : {np.sum(data_transfer):.2f}"
+    )
+
+    if len(finished_jobs)>0:
+        print(
+            f"Data transfer/job : "
+            f"{np.sum(data_transfer)/len(finished_jobs):.3f}"
+        )
+
+
+    # =========================
+    # Time
+    # =========================
+
+    print("\n--- SIMULATION ---")
+
+    print(
+        f"Simulation steps : {len(time_line)}"
+    )
+
+    print(
+        "="*60
+    )
+    
+
+
+evaluate_scheduler(
+    "Round Robin",
+    RR,
+    jobs_RR,
+    time_line_RR,
+    cpu_utilization_RR,
+    power_price_RR,
+    data_transfer_RR,
+    sla_violation_RR,
+    workload_std_RR
+)
+
+
+evaluate_scheduler(
+    f"Least Loaded {mode}",
+    LL,
+    jobs_LL,
+    time_line_LL,
+    cpu_utilization_LL,
+    power_price_LL,
+    data_transfer_LL,
+    sla_violation_LL,
+    workload_std_LL
+)
+
+
+
 
 
 plt.style.use("seaborn-v0_8-darkgrid")
@@ -370,7 +598,7 @@ ax4.grid(True, linestyle="--", alpha=0.4)
 ax4.legend(loc="upper left", fontsize=6)
 
 #-------------------------------------
-# SLA Violation levels, waiting time
+# SLA Violation levels
 #-------------------------------------
 
 ax5 = fig.add_subplot(gs[1,1])
@@ -381,12 +609,15 @@ ax5.plot(
     label = "SLA violation : RR"
 )
 
+
 ax5.plot(
     time_line_LL,
     sla_violation_LL,
     color = "#FF0000",
     label = "SLA violation : LL"
 )
+
+
 
 ax5.set_ylabel(
     "SLA Violation (%)",
@@ -404,31 +635,38 @@ ax5.set_ylim(
 )
 ax5.legend(loc="upper left", fontsize=6)
 
+
 # =============================================
-# Hosted Tasks per time for each server
+# SLA : rate of change
 # =============================================
+num_bins = 500
 ax6 = fig.add_subplot(gs[1, 2])
 
 ax6.plot(
-        time_line_RR,
-        server_schedules_RR[server_1_RR],
-        linewidth=2.5,
-        marker="o",
-        markersize=3,
-        label=f"Server {server_1_RR.id} : RR"
-    )
-
+    smooth_by_bins(time_line_LL,sla_violation_var_LL, bin_count = num_bins)[0],
+    smooth_by_bins(time_line_LL,sla_violation_var_LL, bin_count = num_bins)[1],
+    color = "#FF0000",
+    linestyle = '--',
+    label = "SLA violation variation : LL"
+)
 ax6.plot(
-        time_line_LL,
-        server_schedules_LL[server_1_LL],
-        linewidth=2.5,
-        marker="o",
-        markersize=3,
-        label=f"Server {server_1_LL.id} : LL"
-    )
+    smooth_by_bins(time_line_RR,sla_violation_var_RR, bin_count = num_bins)[0],
+    smooth_by_bins(time_line_RR,sla_violation_var_RR, bin_count = num_bins)[1],
+    color = "#0350AD",
+    linestyle = '--',
+    label = "SLA violation variation : RR"
+)
 
-ax6.set_title("Queued tasks Over Time", fontsize=8, fontweight="bold")
-ax6.set_ylabel("Queued tasks", fontsize=6)
+ax6.set_title(
+    f"SLA Violation Variation : smoothed over {num_bins} bins",
+    fontsize=8,
+    fontweight="bold"
+)
+ax6.set_ylabel(
+    "Change in SLA Violation Rate (%)",
+    fontsize=6
+)
+
 ax6.set_xlabel("Time", fontsize=6)
 ax6.grid(True, linestyle="--", alpha=0.4)
 ax6.legend(loc="upper left", fontsize=6)

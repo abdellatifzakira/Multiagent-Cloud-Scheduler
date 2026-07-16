@@ -20,7 +20,7 @@ class Vm:
         self.used_ram = 0.0
         self.used_storage = 0.0
         
-        self.max_concurrent_tasks = 5
+        self.max_concurrent_tasks = 25
         
         #self.timer = 0.0
         
@@ -53,7 +53,6 @@ class Vm:
         self.used_storage += task.size
         
         task.status = 2  # running
-        task.start_time = t
         #self.timer = task.runtime
         
         return True
@@ -77,15 +76,10 @@ class Vm:
         self.used_storage -= task.size
         
         task.on_finished(t) # Inter-tasks notification 
-        task.status = 0
         task.end_time = t
+        task.status = 0
 
         self.hosted_task.pop(task)
         self.server.hosted_tasks.pop(task)
-    
-        
-        #self.status = 0  # idle again
-        
-        #self.timer = 0.0
 
         return True

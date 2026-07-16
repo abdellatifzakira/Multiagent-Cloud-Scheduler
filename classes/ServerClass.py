@@ -23,7 +23,7 @@ class Server:
         vms: list = None,
         id: int = None,
         storage: int = 3072,
-        static_power: float = 0.035,
+        static_power: float = 130,
         optimal_utilization_rate: float = 0.75
     ):
         if id is None :
@@ -89,7 +89,6 @@ class Server:
     def execute_tasks(self, t):
         while self.task_queue:
             task = self.task_queue[0]  # look at first task
-
             if task.status == 4: # must be pending
                 hosted = False
                 for vm in self.vms.values():
@@ -100,6 +99,7 @@ class Server:
                             task.vm = vm
                             self.task_queue.popleft()
                             hosted = True
+                            
                             break
 
                 if not hosted:
@@ -107,10 +107,11 @@ class Server:
             else:
                 self.task_queue.popleft()
         
-    def add_task_to_queue(self,task) :
+    def add_task_to_queue(self,task, t) :
         if task.size + self.get_storage_usage() <= self.storage :
             task.status = 4 # waiting in the queue
             self.task_queue.append(task)
+            task.start_time = t
             return True
         return False
     
@@ -119,19 +120,19 @@ class Server:
     
     
     def cpu_utilization(self):
-        return np.sum(vm.used_cpu for vm in self.vms.values())
+        return np.sum(round(vm.used_cpu, ndigits= 5) for vm in self.vms.values())
     
     def ram_utilization(self):
-        return np.sum(vm.used_ram for vm in self.vms.values())
+        return np.sum(round(vm.used_ram, ndigits= 5) for vm in self.vms.values())
     def storage_utilization(self):
         return (np.sum(vm.used_storage for vm in self.vms.values()) +
                 np.sum(_tsk.size for _tsk in self.task_queue))
     
     
-    # at first we try simple linear power consumption
+    
     def get_power_consumption(self):
         cpu_utilization = self.cpu_utilization()
-        return round(cpu_utilization*self.alpha + self.static_power, ndigits=3)
+        return  round((cpu_utilization**self.beta)*self.alpha + self.static_power, ndigits=3)
     
     
     def get_storage_usage(self):
