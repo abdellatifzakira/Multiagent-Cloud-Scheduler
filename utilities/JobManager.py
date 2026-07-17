@@ -77,6 +77,9 @@ class JobManager:
 
         for job in finished_jobs:
             self.arrived_jobs.remove(job)
+        
+        for job in finished_jobs :
+                job.end_time = max([tsk.end_time for tsk in job.tasks.values()])
 
         self.finished_jobs.extend(finished_jobs)
 

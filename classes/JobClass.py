@@ -94,8 +94,8 @@ class Job:
     @staticmethod
     def spawn_job(num_tasks=3,
                   job_id = None,
-                  cpu_req = [0.01, 0.02, 0.03],
-                  ram_req = [0.01, 0.02, 0.03],
+                  cpu_req = [32, 32, 32],
+                  ram_req = [10, 10, 10],
                   runtime = [10, 10, 10],
                   data_transfer_weights = None,
                   arrival_time = None,
@@ -135,7 +135,10 @@ class Job:
                 tsk.arrival_time = job.time_arrived
                 tsk.status = 1
         
-        job.sla_limit = job.get_time_consuming_path()[1] * job.sla_factor
+        job.sla_limit = (
+                            job.get_critical_path_runtime()
+                            * job.sla_factor
+                        )
         return job
     
     
@@ -164,8 +167,8 @@ class Job:
         for job_id in range(num_jobs):
             
             # Random task parameters
-            cpu_req = [round(np.random.uniform(0.01, 0.1), 3) for _ in range(num_tasks_per_job)]
-            ram_req = [round(np.random.uniform(0.01, 0.1), 3) for _ in range(num_tasks_per_job)]
+            cpu_req = [round(np.random.uniform(8, 32), 0) for _ in range(num_tasks_per_job)]
+            ram_req = [round(np.random.uniform(2, 32), 0) for _ in range(num_tasks_per_job)]
             runtime = [round(np.random.uniform(5,100), 0) for _ in range(num_tasks_per_job)]
             sizes = [round(np.random.uniform(32, 128), 0) for _ in range(num_tasks_per_job)]
             
@@ -385,6 +388,41 @@ class Job:
         
 
         return running
+    
+    
+    
+    def get_critical_path_runtime(self):
+
+        if self.dag is None:
+            return max(
+                task.runtime 
+                for task in self.tasks.values()
+            )
+
+        earliest_finish = {}
+
+        # topological order
+        topo = self.dag.topological_sorting()
+
+        for node in topo:
+
+            task_runtime = self.tasks[node].runtime
+
+            parents = self.dag.predecessors(node)
+
+            if len(parents) == 0:
+                earliest_start = 0
+
+            else:
+                earliest_start = max(
+                    earliest_finish[p]
+                    for p in parents
+                )
+
+            earliest_finish[node] = earliest_start + task_runtime
+
+
+        return max(earliest_finish.values())
 
 # QUICK TESTS :
 

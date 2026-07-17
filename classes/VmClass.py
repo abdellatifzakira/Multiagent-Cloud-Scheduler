@@ -32,7 +32,6 @@ class Vm:
         return (
             self.used_cpu + task.cpu <= self.cpu and
             self.used_ram + task.ram <= self.ram and
-            self.used_storage + task.size <= self.storage and
             len(list(self.hosted_task.values())) + 1 <= self.max_concurrent_tasks
         )
 
@@ -49,7 +48,6 @@ class Vm:
 
         self.used_cpu += task.cpu
         self.used_ram += task.ram
-        self.used_storage += task.size
         
         task.status = 2  # running
         

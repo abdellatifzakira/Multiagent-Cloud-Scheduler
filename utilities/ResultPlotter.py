@@ -78,7 +78,7 @@ def plot_results(results_list, num_bins = 50, scenarios_edges = []):
             label=name
         )
 
-        ax2.set_title(f"Power Price smoothed over {num_bins} bins")
+        ax2.set_title(f"Power Price\nsmoothed over {num_bins} bins")
         ax2.legend()
 
 
@@ -143,7 +143,7 @@ def plot_results(results_list, num_bins = 50, scenarios_edges = []):
             label=name
         )
 
-        ax6.set_title(f"SLA Variation smoothed over {num_bins} bins")
+        ax6.set_title(f"SLA Variation\nsmoothed over {num_bins} bins")
         ax6.legend()
 
 

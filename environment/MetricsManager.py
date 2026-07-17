@@ -28,8 +28,6 @@ class MetricsManager:
         
     def get_sla_violation_rate(self) :
         if self.finished_jobs != []:
-            for job in self.finished_jobs :
-                job.end_time = max([tsk.end_time for tsk in job.tasks.values()])
             sla_violation_rate = (
                         np.sum([
                             (job.end_time - job.time_arrived) > job.sla_limit

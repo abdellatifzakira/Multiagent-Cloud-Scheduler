@@ -61,4 +61,3 @@ class Task:
     if self.children :
       for _child in self.children :
         _child.fail_and_cascade()
-    #self.deadline = self.start_time + self.runtime

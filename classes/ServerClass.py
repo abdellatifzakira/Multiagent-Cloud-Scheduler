@@ -120,13 +120,13 @@ class Server:
     
     
     def cpu_utilization(self):
-        return np.sum(round(vm.used_cpu, ndigits= 5) for vm in self.vms.values())
+        return np.sum(round(vm.used_cpu, ndigits= 5) for vm in self.vms.values())/self.c_cpu
     
     def ram_utilization(self):
-        return np.sum(round(vm.used_ram, ndigits= 5) for vm in self.vms.values())
+        return np.sum(round(vm.used_ram, ndigits= 5) for vm in self.vms.values())/self.c_ram
     def storage_utilization(self):
-        return (np.sum(vm.used_storage for vm in self.vms.values()) +
-                np.sum(_tsk.size for _tsk in self.task_queue))
+        return ((np.sum(vm.used_storage for vm in self.vms.values()) +
+                np.sum(_tsk.size for _tsk in self.task_queue)))/self.storage
     
     
     
