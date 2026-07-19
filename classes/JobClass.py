@@ -24,8 +24,6 @@ class Job:
             Job._counter = max(Job._counter, id + 1)
         self.tasks = self.populate_tasks(tasks)
         self.time_arrived = time_arrived
-        #self.get_first_ready_task_flag = False
-        #self.deadline = self.find_critical_path_length()
         self.data_transfer_weights = data_transfer_weights
         self.total_tasks = len(self.tasks) if tasks is not None else 0
         self.dag = self.build_dag()
@@ -128,6 +126,8 @@ class Job:
             for parent_key, child_key in data_transfer_weights.keys():
                 job.tasks[parent_key].children.append(job.tasks[child_key])
                 job.tasks[child_key].parents.append(job.tasks[parent_key])
+                
+                job.tasks[child_key].parent_weights[job.tasks[parent_key]] = data_transfer_weights[(parent_key, child_key)]
             
         for tsk in job.tasks.values() :
             tsk.remaining_parents = len(tsk.parents)
@@ -144,14 +144,13 @@ class Job:
     
     
     @staticmethod
-    def generate_jobs(num_jobs, num_tasks_per_job=4, seed=None, time_arrived = [], edge_probability = 0.5):
+    def generate_jobs(num_jobs, num_tasks_per_job=4, time_arrived = [], edge_probability = 0.5):
         """
         Generate multiple jobs with random parameters.
         
         Args:
             num_jobs: number of jobs to create
             num_tasks_per_job: tasks per job (default 4)
-            seed: random seed for reproducibility
         
         Returns:
             list of Job objects
@@ -160,14 +159,11 @@ class Job:
         if time_arrived is not None :
             assert len(time_arrived) == num_jobs, "[INVALID INPUT]\nArrival times does not macth the jobs number."
         
-        if seed:
-            np.random.seed(seed)
-        
         jobs = []
         for job_id in range(num_jobs):
             
             # Random task parameters
-            cpu_req = [round(np.random.uniform(8, 32), 0) for _ in range(num_tasks_per_job)]
+            cpu_req = [round(np.random.uniform(4, 32), 0) for _ in range(num_tasks_per_job)]
             ram_req = [round(np.random.uniform(2, 32), 0) for _ in range(num_tasks_per_job)]
             runtime = [round(np.random.uniform(5,100), 0) for _ in range(num_tasks_per_job)]
             sizes = [round(np.random.uniform(32, 128), 0) for _ in range(num_tasks_per_job)]

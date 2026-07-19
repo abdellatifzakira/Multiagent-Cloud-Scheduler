@@ -88,3 +88,20 @@ class JobManager:
     def initialize(self, t=0):
         self.update_arrival_jobs(t)
         self.update_ready_tasks()
+        
+    
+    def reset(self):
+        self.workload_size = len(self.jobs)
+        self.workload = True
+        self.arrived_jobs = []
+        self.ready_tasks = []
+        self.running_tasks = []
+        self.pending_tasks = 0
+        self.finished_jobs = []
+        for job in self.jobs :
+            job.end_time = None
+            job.sla_violated = None,
+            job.counted = False
+            job.success = False
+            for task in job.tasks.values() :
+                   task.reset()

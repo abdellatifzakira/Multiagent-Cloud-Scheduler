@@ -1,28 +1,24 @@
 from collections import deque
+
 class Vm:
-    def __init__(self, id: int, c_cpu: float, c_ram: float, c_storage: float):
+    def __init__(self, id: int, c_cpu: float, c_ram: float):
 
         self.id = id
 
         self.cpu = c_cpu
         self.ram = c_ram
-        self.storage = c_storage
+
 
         self.server = None
-
-        # 0 = IDLE, 1 = BUSY
-        #self.status = 0
 
         self.hosted_task = {}
         self.pending_tasks = deque()
 
         self.used_cpu = 0.0
         self.used_ram = 0.0
-        self.used_storage = 0.0
         
         self.max_concurrent_tasks = 25
         
-        #self.timer = 0.0
         
 
     # ----------------------------
@@ -34,6 +30,9 @@ class Vm:
             self.used_ram + task.ram <= self.ram and
             len(list(self.hosted_task.values())) + 1 <= self.max_concurrent_tasks
         )
+        
+
+        
 
 
     # ----------------------------
@@ -48,6 +47,7 @@ class Vm:
 
         self.used_cpu += task.cpu
         self.used_ram += task.ram
+        
         
         task.status = 2  # running
         
@@ -69,7 +69,6 @@ class Vm:
 
         self.used_cpu -= task.cpu
         self.used_ram -= task.ram
-        self.used_storage -= task.size
         
         task.on_finished(t) # Inter-tasks notification 
         task.end_time = t
@@ -79,3 +78,4 @@ class Vm:
         self.server.hosted_tasks.pop(task)
 
         return True
+    

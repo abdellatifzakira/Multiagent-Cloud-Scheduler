@@ -13,11 +13,17 @@ class MetricsManager:
         self.servers = self.server_farm.servers.values()
         self.results = {}
         
+    def set_name(self, name) :
+        self.results['NAME'] = name
+        
         
     def initialize(self):
+        self.results = {}
+        self.results['NAME'] = None
         self.results['TIMELINE'] = []
         self.results['CPU'] = {s  : [] for s in self.server_farm.servers.values()}
         self.results['RAM'] =  {s  : [] for s in self.server_farm.servers.values()}
+        self.results['STORAGE'] =  {s  : [] for s in self.server_farm.servers.values()}
         self.results['CPU_STD'] = []
         self.results['POWER_PRICE'] = []
         self.results['DATA_TRANSFER'] = []
@@ -32,9 +38,9 @@ class MetricsManager:
                         np.sum([
                             (job.end_time - job.time_arrived) > job.sla_limit
                             for job in self.finished_jobs
-                        ])
-                        / len(self.finished_jobs)
-                    ) * 100
+                        ]))
+            
+            
             
             return sla_violation_rate
         else :
@@ -57,8 +63,9 @@ class MetricsManager:
     
         self.results['TIMELINE'].append(t)
         for server in self.server_farm.servers.values() :
-                self.results['CPU'][server].append(server.cpu_utilization())
+                self.results['CPU'][server].append(server.virtual_cpu_efficiency())
                 self.results['RAM'][server].append(server.ram_utilization())
+                self.results['STORAGE'][server].append(server.storage_utilization())
 
             
             
@@ -68,4 +75,17 @@ class MetricsManager:
         self.results['SLA'].append(self.get_sla_violation_rate())
         self.results['SLA_VAR'] = np.diff(self.results['SLA'], prepend=self.results['SLA'][0])
         self.results['CPU_STD'].append(np.std([self.results['CPU'][s][t] for s in self.results['CPU'].keys()]))
+        
+        
+        
+    
+    def print_experience_summary(self) :
+        
+        print(f"POWER PRICE : MEAN = {np.mean(self.results['POWER_PRICE'])}, RANGE = {np.max(self.results['POWER_PRICE']), np.min(self.results['POWER_PRICE'])}" )
+        print(f"DATA TRANSFER : MEAN = {np.mean(self.results['DATA_TRANSFER'])}, RANGE = {np.max(self.results['DATA_TRANSFER']), np.min(self.results['DATA_TRANSFER'])}" )
+        print(f"CUM DATA TRANSFER : RANGE = {np.max(self.results['CUM_DATA_TRANSFER']), np.min(self.results['CUM_DATA_TRANSFER'])}" )
+        print(f"CPU STD : MEAN = {np.mean(self.results['CPU_STD'])}, RANGE = {np.max(self.results['CPU_STD']), np.min(self.results['CPU_STD'])}" )
+        print(f"FINAL SLA VIOLATION RATE (IN JOB COUNT) : {max(self.results['SLA'])}/{len(self.finished_jobs)}")
+        print(f"TIMELINE LENGTH : {len(self.results['TIMELINE'])}")
+        
 

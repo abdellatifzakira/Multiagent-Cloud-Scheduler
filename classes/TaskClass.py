@@ -1,3 +1,4 @@
+import random
 class Task:
   def __init__(
     self,
@@ -31,6 +32,8 @@ class Task:
     self.vm = None
     self.left_retry = 3
     
+    self.parent_weights = {}
+    
   
   def advance_timer(self, _t) :
     if self.status != 2 :
@@ -57,7 +60,24 @@ class Task:
   
   
   def fail_and_cascade(self) :
-    self.status = -1
+    if self.vm is not None:
+      self.vm.release_failed_task(self)
     if self.children :
       for _child in self.children :
         _child.fail_and_cascade()
+        
+  
+  def reset(self) :
+    self.server_farm_id = None
+    self.server = None
+    self.remaining_parents = len(self.parents)
+    self.status = 1 if len(self.parents) <= 0 else 3
+    if len(self.parents) > 0 :
+      self.arrival_time = None 
+    self.start_time = None
+    self.end_time = None
+    self.monitored = False
+    self.meet_sla = None
+    self.timer = None
+    self.vm = None
+    self.left_retry = 3

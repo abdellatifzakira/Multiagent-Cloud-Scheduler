@@ -10,6 +10,7 @@ class LeastLoadedScheduler:
         self.servers = None
         self.mode = mode
         self.sorting = sorting
+        self.name = 'LL'
 
         
         assert mode in ['CPU', 'RAM', 'QUEUE', 'HYBRID'], "[INVALID MODE]\nAVAILABLE MODES : CPU | RAM | QUEUE | HYBRID "
@@ -53,17 +54,15 @@ class LeastLoadedScheduler:
                 """
                 loads = []
                 for s in servers:
-                    current = s.cpu_utilization()
+                    current = s.virtual_cpu_efficiency()
 
                     max_available_vm_cpu = max(
                         vm.cpu - vm.used_cpu
                         for vm in s.vms.values()
                     )
                     
-                    # A weighted queue pressure, assuming front tasks are more likely to get assigned,
-                    # therfore more likely to surge the vm/server
                     queue_pressure = np.sum(
-                        [tsk.cpu*math.exp(-0.3*i) for i, tsk in enumerate(s.task_queue)]
+                        [tsk.cpu for i, tsk in enumerate(s.task_queue)]
                     )
                     score = current + max(
                         0,
@@ -87,7 +86,7 @@ class LeastLoadedScheduler:
                     )
                     
                     queue_pressure = np.sum(
-                        [tsk.cpu*math.exp(-0.3*i) for i, tsk in enumerate(s.task_queue)]
+                        [tsk.cpu for i, tsk in enumerate(s.task_queue)]
                     )
                     score_cpu = current + max(
                         0,
@@ -112,6 +111,10 @@ class LeastLoadedScheduler:
     def assign_tasks(self, ready_tasks, t):
         self.sort_tasks(ready_tasks=ready_tasks)
         for task in ready_tasks :
+            assert all(parent.status == 0 for parent in task.parents),(
+                            f"DAG violation: Task {task.id} scheduled "
+                            "before all parents finished"
+                        )
             server = self.get_least_busy_server()
             server.add_task_to_queue(task, t)
 
