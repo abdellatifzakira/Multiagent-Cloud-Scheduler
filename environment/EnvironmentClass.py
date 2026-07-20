@@ -6,11 +6,13 @@ class Environment:
                  metrics_manager = None,
                  job_manager = None,
                  scheduler = None,
+                 time_step = 0.01,
                  ):
         self.server_farm = server_farm
         self.job_manager = job_manager
         self.metrics_manager = metrics_manager
         self.scheduler = scheduler
+        self.time_step = time_step
         self.scheduler.server_farm = self.server_farm
         self.scheduler.servers = self.server_farm.servers
         
@@ -50,13 +52,13 @@ class Environment:
                 
             self.job_manager.update_running_tasks()
             self.job_manager.update_finished_jobs()
-            self.server_farm.update_farm_state(t=t)
+            self.server_farm.update_farm_state(t=t, time_step = self.time_step)
             self.metrics_manager.collect_data(self.job_manager, t)
             
             
             
             
-            t += 1
+            t += self.time_step
         
         
         print("==================================================")
@@ -64,6 +66,8 @@ class Environment:
         print("==================================================")
         
         self.metrics_manager.print_experience_summary()
+        self.metrics_manager.print_after_run_check()
+        self.metrics_manager.print_infrastructure_details()
         
 
         

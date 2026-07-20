@@ -13,7 +13,7 @@ class Job:
         time_arrived: float = None,
         data_transfer_weights: dict = None,
         id: int = None,
-        sla_factor= 1.2,
+        sla_factor= 2,
 
     ):
         if id is None:
@@ -67,10 +67,10 @@ class Job:
         graph.es["weight"] = weights
         
         # assign attributes
-        runtimes = [task.runtime for task in tasks]
+        num_instructions = [task.num_instructions for task in tasks]
         cpus = [task.cpu for task in tasks]
         rams = [task.ram for task in tasks]
-        graph.vs["runtime"] = runtimes
+        graph.vs["num_instructions"] = num_instructions
         graph.vs["cpu"] = cpus
         graph.vs["ram"] = rams
         
@@ -94,12 +94,12 @@ class Job:
                   job_id = None,
                   cpu_req = [32, 32, 32],
                   ram_req = [10, 10, 10],
-                  runtime = [10, 10, 10],
+                  instructions = [5e6, 5e6, 5e6],
                   data_transfer_weights = None,
                   arrival_time = None,
                   sizes = [32,32,32]
                   ):
-        assert num_tasks == len(sizes) == len(cpu_req) == len(ram_req) == len(runtime), f"\n[INPUT ERROR] Input length mismatch \nEXPECTED TASKS NUM = {num_tasks} \nCPU REQ LENGTH = {len(cpu_req)} \nRAM REQ LENGTH = {len(ram_req)} \nRUNTIME REQ LENGTH = {len(runtime)}\nTASKS SIZES LENGTH = {len(sizes)}"
+        assert num_tasks == len(sizes) == len(cpu_req) == len(ram_req) == len(instructions), f"\n[INPUT ERROR] Input length mismatch \nEXPECTED TASKS NUM = {num_tasks} \nCPU REQ LENGTH = {len(cpu_req)} \nRAM REQ LENGTH = {len(ram_req)} \nINSTRUCTIONS NUM LENGTH = {len(instructions)}\nTASKS SIZES LENGTH = {len(sizes)}"
         
         Tasks = [ Task(
             id = i,
@@ -107,7 +107,7 @@ class Job:
             cpu = cpu_req[i],
             ram= ram_req[i],
             status= 3,
-            runtime= runtime[i],
+            num_instructions = instructions[i],
             size= sizes[i]
                 )
             for i in range(num_tasks)]
@@ -139,6 +139,10 @@ class Job:
                             job.get_critical_path_runtime()
                             * job.sla_factor
                         )
+        
+        for task in Tasks :
+            task.job_sla =  job.sla_limit
+            task.job_arrival = job.time_arrived
         return job
     
     
@@ -165,7 +169,7 @@ class Job:
             # Random task parameters
             cpu_req = [round(np.random.uniform(4, 32), 0) for _ in range(num_tasks_per_job)]
             ram_req = [round(np.random.uniform(2, 32), 0) for _ in range(num_tasks_per_job)]
-            runtime = [round(np.random.uniform(5,100), 0) for _ in range(num_tasks_per_job)]
+            instructions = [round(np.random.uniform(250e6,1e9), 0) for _ in range(num_tasks_per_job)]
             sizes = [round(np.random.uniform(32, 128), 0) for _ in range(num_tasks_per_job)]
             
             # Generate random DAG edges
@@ -180,15 +184,14 @@ class Job:
                 num_tasks=num_tasks_per_job,
                 cpu_req=cpu_req,
                 ram_req=ram_req,
-                runtime=runtime,
+                instructions=instructions,
                 sizes= sizes,
                 data_transfer_weights=data_transfer_weights if data_transfer_weights else None,
-                job_id=job_id
+                job_id=job_id,
+                arrival_time=time_arrived[job_id]
             )
             
             
-            if len(time_arrived):
-                job.set_time_arrived(time_arrived[job_id])
 
             jobs.append(job)
         
@@ -388,10 +391,12 @@ class Job:
     
     
     def get_critical_path_runtime(self):
+        
+        _compute_power_refrence = 250e6 # 250_000_000 instruction/second a baseline : modest vm
 
         if self.dag is None:
             return max(
-                task.runtime 
+                (task.num_instructions/_compute_power_refrence)
                 for task in self.tasks.values()
             )
 
@@ -402,7 +407,7 @@ class Job:
 
         for node in topo:
 
-            task_runtime = self.tasks[node].runtime
+            task_instructions = self.tasks[node].num_instructions
 
             parents = self.dag.predecessors(node)
 
@@ -415,10 +420,10 @@ class Job:
                     for p in parents
                 )
 
-            earliest_finish[node] = earliest_start + task_runtime
+            earliest_finish[node] = earliest_start + task_instructions
 
 
-        return max(earliest_finish.values())
+        return max(earliest_finish.values())/_compute_power_refrence
 
 # QUICK TESTS :
 

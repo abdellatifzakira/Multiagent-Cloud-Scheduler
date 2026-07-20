@@ -62,7 +62,7 @@ class Server_Farm:
                 return True
         return False
 
-    def update_farm_state(self,t, time_step = 1):
+    def update_farm_state(self,t, time_step):
         for server in self.servers.values() :
             server.time_step_vm(_t=t,time_step = time_step)
         
@@ -73,6 +73,7 @@ class Server_Farm:
                                 cpu_range = [512, 2048],
                                 ram_range = [512, 4096],
                                 storage_range = [512, 16384],
+                                compute_power_range = [1e9, 5e9],
                                 max_vms_count = 3,
                                 alphas = [32, 128],
                                 betas = [2, 4],
@@ -102,31 +103,39 @@ class Server_Farm:
         c_cpu = [round(np.random.uniform(low= min(cpu_range), high=max(cpu_range)),ndigits = 0) for _ in range(server_count)]
         c_ram = [round(np.random.uniform(low= min(ram_range), high=max(ram_range)),ndigits = 0) for _ in range(server_count)]
         c_storage = [round(np.random.uniform(low= min(storage_range), high=max(storage_range)),ndigits = 0) for _ in range(server_count)]
+        c_compute_power = [round(np.random.uniform(low= min(compute_power_range), high=max(compute_power_range)),ndigits = 0) for _ in range(server_count)]
         alpha = [round(np.random.uniform(low= min(alphas), high=max(alphas)),ndigits = 2) for _ in range(server_count)]
         beta = [round(np.random.uniform(low= min(betas), high=max(betas)),ndigits = 2) for _ in range(server_count)]
         server_list = []
         for _ in range(server_count):
+            
+            virtual_quota = round(np.random.uniform(low= min(virtual_allocation), high=max(virtual_allocation)),ndigits = 3)
 
             server = Server(
                 c_cpu=c_cpu[_],
                 c_ram=c_ram[_],
                 storage=c_storage[_],
+                compute_power=c_compute_power[_],
                 alpha=alpha[_],
-                beta=beta[_]
+                beta=beta[_],
+                virtualization_level = virtual_quota
             )
             
-            virtual_quota = round(np.random.uniform(low= min(virtual_allocation), high=max(virtual_allocation)),ndigits = 3)
+
 
             vm_count = random.choice(range(2, max_vms_count + 1))
 
             vm_cpu = []
             vm_ram = []
+            vm_compute = []
 
             remaining_cpu = c_cpu[_]*virtual_quota
             remaining_ram = c_ram[_]*virtual_quota
+            remaining_compute = c_compute_power[_]*virtual_quota
 
             min_cpu = 32
             min_ram = 128
+            min_compute = 25e6
 
             for i in range(vm_count):
 
@@ -135,24 +144,29 @@ class Server_Farm:
                 if remaining_vms == 1:
                     cpu = remaining_cpu
                     ram = remaining_ram
+                    compute = remaining_compute
 
                 else:
                     max_cpu = remaining_cpu - (remaining_vms - 1) * min_cpu
                     max_ram = remaining_ram - (remaining_vms - 1) * min_ram
-
+                    max_compute = remaining_compute - (remaining_vms - 1) * min_compute
+                    
                     cpu = round(np.random.uniform(min_cpu, max_cpu))
                     ram = round(np.random.uniform(min_ram, max_ram))
-
+                    compute = round(np.random.uniform(min_compute, max_compute))
                 vm_cpu.append(cpu)
                 vm_ram.append(ram)
+                vm_compute.append(compute)
 
                 remaining_cpu -= cpu
                 remaining_ram -= ram
+                remaining_compute -= compute
 
 
             server.spawn_vm_group(
                 cpu=vm_cpu,
-                ram=vm_ram
+                ram=vm_ram,
+                compute=vm_compute
             )
 
             server_list.append(server)

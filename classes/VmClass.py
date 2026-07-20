@@ -1,12 +1,13 @@
 from collections import deque
 
 class Vm:
-    def __init__(self, id: int, c_cpu: float, c_ram: float):
+    def __init__(self, id: int, c_cpu: float, c_ram: float, compute_power: float):
 
         self.id = id
 
         self.cpu = c_cpu
         self.ram = c_ram
+        self.compute_power = compute_power
 
 
         self.server = None
@@ -18,7 +19,7 @@ class Vm:
         self.used_ram = 0.0
         
         self.max_concurrent_tasks = 25
-        
+        self.completed_tasks = 0
         
 
     # ----------------------------
@@ -38,27 +39,29 @@ class Vm:
     # ----------------------------
     # HOST TASK
     # ----------------------------
-    def host_task(self, task, t):
+    def host_task(self, task):     
+        
         self.hosted_task[task] = task.id
-        
-        # Initialize the task internal timer 
-        task.timer = task.runtime
-        
 
         self.used_cpu += task.cpu
         self.used_ram += task.ram
-        
         
         task.status = 2  # running
         
         return True
     
     
-    def time_step_tasks(self,_t) :
+    def time_step_tasks(self,_t, time_step) :
+        
+        if len(self.hosted_task.keys()) > 0 :
+            actual_instruction_rate = time_step*self.compute_power
+            actual_instruction_rate_per_task = actual_instruction_rate/len(self.hosted_task.keys())
+        
         if self.hosted_task is {} :
             return
         for _task in list(self.hosted_task.keys()):
-            _task.advance_timer(_t)
+            _task.remaining_instructions -= actual_instruction_rate_per_task
+            _task.advance_timer(_t, time_step)
 
     # ----------------------------
     # FINISH TASK
@@ -76,6 +79,7 @@ class Vm:
 
         self.hosted_task.pop(task)
         self.server.hosted_tasks.pop(task)
+        self.completed_tasks += 1
 
         return True
     

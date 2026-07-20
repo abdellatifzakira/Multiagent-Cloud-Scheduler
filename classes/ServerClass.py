@@ -13,6 +13,7 @@ class Server:
         self,
         c_cpu: float,
         c_ram: float,
+        compute_power: float, 
         alpha: float,
         beta: float = None,
         server_farm_id: int = None,
@@ -21,8 +22,12 @@ class Server:
         storage: int = 3072,
         static_power: float = 130,
         optimal_utilization_rate: float = 0.75,
-        virtualization_level : float = 0.9
+        virtualization_level : float = 0.9,
+        mode : str = 'EXECUTION_TIME',
     ):
+        assert mode in ['SIMPLE', 'LEAST_LOADED', 'EXECUTION_TIME', 'COLLABORATIVE'], \
+            "[BAD INPUT] : AVAILABLE MODES SIMPLE | LEAST_LOADED | COLLABORATIVE"
+        
         if id is None :
             self.id = Server._server_count
             Server._server_count +=1 
@@ -32,10 +37,10 @@ class Server:
         self.vms = self.populate_vm(vms) #create a dict of vms with their ids as keys for faster access
         self.c_cpu = c_cpu
         self.c_ram = c_ram
-
+        self.compute_power = compute_power
         self.alpha = alpha
         self.beta = beta
-
+        self.mode =  mode
         self.static_power = static_power
         self.optimal_utilization_rate = optimal_utilization_rate
         
@@ -47,6 +52,7 @@ class Server:
         self.virtualization_level = virtualization_level
         
         self.virtual_capacity = self.virtualization_level*self.c_cpu
+        self.peak_cpu = 0
 
     def populate_vm(self, vms):
         if vms is None :
@@ -58,17 +64,17 @@ class Server:
     def spawn_vm(self, vm):
         vm.server = self
         self.vms[vm.id] = vm
-
-    def spawn_vm_group(self, cpu=[32], ram=[32]):
+        
+    def spawn_vm_group(self, cpu=[32], ram=[32], compute = [1e6]):
 
         start_id = max(self.vms.keys()) + 1 if self.vms else 0
 
-        assert len(cpu) == len(ram), "\n[INVALID INPUT]\nCPU, RAM lists must match"
-        assert sum(cpu) <= self.c_cpu and sum(ram) <= self.c_ram , f"\n[INVALID INPUT]\nCPU, RAM requirements exceed the server capacity ! {sum(cpu)} <= {self.c_cpu}, {sum(ram)} <= {self.c_ram }"
+        assert len(cpu) == len(ram) == len(compute), "\n[INVALID INPUT]\nCPU, RAM, COMPUTE POWER lists must match"
+        assert sum(cpu) <= self.c_cpu and sum(ram) <= self.c_ram and sum(compute) <= self.compute_power, f"\n[INVALID INPUT]\nCPU, RAM, COMPUTE POWER requirements exceed the server capacity ! {sum(cpu)} <= {self.c_cpu}, {sum(ram)} <= {self.c_ram }"
 
         for i in range(len(cpu)):
             vm_id = start_id + i
-            new_vm = Vm(id=vm_id, c_cpu=cpu[i], c_ram=ram[i])
+            new_vm = Vm(id=vm_id, c_cpu=cpu[i], c_ram=ram[i], compute_power=compute[i])
             self.spawn_vm(new_vm)
         
     
@@ -77,27 +83,83 @@ class Server:
                 self.ram_utilization() < 1 and
                 self.storage_utilization() < 1
                 )
+    
+    def first_fit(self, task):
+        for vm in self.vms.values():
+            if vm.check_req_constraint(task):
+                if vm.host_task(task):
+                    self.hosted_tasks[task] = vm
+                    task.server = self
+                    task.vm = vm
+                    return True
+        return False
+        
+    def least_loaded(self, task):
+        vms = sorted(
+                    self.vms.items(),
+                    key=lambda x: x[1].used_cpu/x[1].cpu,
+                    reverse=False
+                    )
+        
+        for id, vm in vms :
+            if vm.check_req_constraint(task):
+                if vm.host_task(task):
+                    self.hosted_tasks[task] = vm
+                    task.server = self
+                    task.vm = vm
+                    return True
+        return False
+    
+    
+    def fastest_vm(self, task):
+        def get_expected_latency(vm):
+            _vm = vm[1]
+            _all_instructions = sum(
+                tsk.remaining_instructions
+                for tsk in _vm.hosted_task.keys()
+            )
+            
+            return _all_instructions/_vm.compute_power
+        vms = sorted(
+                    self.vms.items(),
+                    key=get_expected_latency,
+                    reverse=False
+                    )
+        
+        for id, vm in vms :
+            if vm.check_req_constraint(task):
+                if vm.host_task(task):
+                    self.hosted_tasks[task] = vm
+                    task.server = self
+                    task.vm = vm
+                    return True
+        return False
+            
         
         
-
-    # Basic Hosting : first in list, first served => to be enhanced
     def execute_tasks(self, t):
+        _idx = 0
         while self.task_queue:
-            task = self.task_queue[0]  # look at first task
+            try :
+                task = self.task_queue[_idx]  # look at first task
+            except IndexError :
+                break
             if task.status == 4: # must be pending
-                hosted = False
-                for vm in self.vms.values():
-                    if vm.check_req_constraint(task):
-                        if vm.host_task(task, t):
-                            self.hosted_tasks[task] = vm
-                            task.server = self
-                            task.vm = vm
-                            self.task_queue.popleft()
-                            hosted = True
-                            break
-
-                if not hosted:
-                    break
+                match self.mode :
+                    case 'SIMPLE' :
+                        hosted  = self.first_fit(task=task)
+                    case 'LEAST_LOADED' :
+                        hosted  = self.least_loaded(task=task)
+                    case 'EXECUTION_TIME' :
+                        hosted  = self.fastest_vm(task=task)
+                
+                if hosted :
+                    self.task_queue.rotate(-_idx)
+                    self.task_queue.popleft()
+                    self.task_queue.rotate(_idx)
+                    _idx = 0 
+                else :
+                    _idx +=1
             else:
                 self.task_queue.popleft()
         
@@ -120,7 +182,9 @@ class Server:
         return np.sum(vm.used_cpu for vm in self.vms.values())/self.c_cpu
     
     def virtual_cpu_efficiency(self):
-        return np.sum(vm.used_cpu for vm in self.vms.values())/self.virtual_capacity
+        usage = np.sum(vm.used_cpu for vm in self.vms.values())/self.virtual_capacity
+        self.peak_cpu = max(self.peak_cpu, usage)
+        return usage
 
     def ram_utilization(self):
         return np.sum(vm.used_ram for vm in self.vms.values())/self.c_ram
@@ -141,7 +205,7 @@ class Server:
     def storage_utilization(self):
         return self.get_storage_usage()/self.storage
     
-    def time_step_vm(self, _t, time_step=1):
+    def time_step_vm(self, _t, time_step):
         for vm in self.vms.values():
             if vm.hosted_task is not {}:
-                vm.time_step_tasks(_t)
+                vm.time_step_tasks(_t, time_step)

@@ -11,12 +11,13 @@ class Experiment:
                      jobs = [],
                      scenarios_edges = [],
                      schedulers = [],
-                     
+                     time_step = 0.01,
                 ):
             self.infrastructure = infrastructure
             self.jobs = jobs
             self.scenarios_edges = scenarios_edges
             self.schedulers = schedulers
+            self.time_step = time_step
             
             self.environments = {}
             
@@ -41,7 +42,8 @@ class Experiment:
                                                         job_manager=JobManager(
                                                             jobs=job_copy
                                                         ),
-                                                        scheduler=scheduler
+                                                        scheduler=scheduler,
+                                                        time_step=self.time_step
                                                     )
         
         def run_experiment(self):

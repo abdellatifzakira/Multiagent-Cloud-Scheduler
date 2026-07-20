@@ -10,16 +10,16 @@ from utilities.helpers import *
 from ExperimentRunner import Experiment
 
 # REPRODUCIBILITY
-global_seed = 42
+global_seed = 100
 random.seed(global_seed)
 np.random.seed(global_seed)
 
 #WORKLOAD
-num_jobs = 300
-mean_job_gap = 5
+num_jobs = 150
+mean_job_gap = 0.01
 num_tasks_per_job = 5
 jobs_per_phase = num_jobs // 3
-edge_probability =  0.75 # controls how fuzzy the jobs are
+edge_probability =  0.25 # controls how fuzzy the jobs are
 
 # Light
 light_gap = np.ceil(
@@ -37,7 +37,7 @@ surge_gap = np.ceil(
 ).astype(int)
 arrival_surge = np.cumsum(surge_gap) + arrival_medium[-1]
 
-arrival_times_RR = np.concatenate([
+arrival_times = np.concatenate([
     arrival_light,
     arrival_medium,
     arrival_surge
@@ -47,9 +47,18 @@ arrival_times_RR = np.concatenate([
 jobs = Job.generate_jobs(
     num_jobs=num_jobs, 
     num_tasks_per_job=num_tasks_per_job,
-    time_arrived=arrival_times_RR,
+    time_arrived=arrival_times,
     edge_probability= edge_probability
 )
+
+
+print("===================================================")
+print("BEFORE RUN CHECK")
+print(f"ALL TASKS {len([tsk for job in jobs for tsk in job.tasks.values()])}")
+print(f"TASK STATES {set([tsk.status for job in jobs for tsk in job.tasks.values()])} : EXPECTED {1, 3}")
+print("===================================================")
+
+
 plot_job_dags(jobs_list = jobs)
 
 
@@ -58,6 +67,7 @@ server_farm = Server_Farm().build_random_server_farms(
     cpu_range = [256, 1024],
     ram_range = [512, 4096],
     storage_range = [4096, 20000],
+    compute_power_range= [1e9, 2e9],
     max_vms_count = 4,
     alphas = [100, 500],
     betas = [2, 5],
@@ -69,7 +79,8 @@ exp = Experiment(
     infrastructure = server_farm,
     jobs  = jobs,
     scenarios_edges = [min(arrival_medium), min(arrival_surge)],
-    schedulers  = [RoundRobinScheduler(), LeastLoadedScheduler(mode='CPU'), DataLocalityAwareScheduler()]
+    schedulers  = [RoundRobinScheduler(), LeastLoadedScheduler(mode='QUEUE', sorting='SLA'),  LeastLoadedScheduler(mode='CPU', sorting='SLA'), DataLocalityAwareScheduler()],
+    time_step = 0.01
            )
 
 exp.build_environment()

@@ -7,7 +7,7 @@ class Task:
     cpu: float,
     ram: float,
     status: int,
-    runtime: float,
+    num_instructions: int,
     size: int = None, 
     ):
     
@@ -18,7 +18,7 @@ class Task:
     self.server_farm_id = None
     self.server = None
     self.status = status # -1: rejected, 0: finished, 1: ready, 2: running, 3: initialized, 4: pending.
-    self.runtime = runtime
+    self.num_instructions = num_instructions
     self.arrival_time = None
     self.start_time = None
     self.end_time = None
@@ -28,19 +28,21 @@ class Task:
     self.monitored = False
     self.meet_sla = None
     self.size = size
-    self.timer = None
+    self.completion_time = 0
     self.vm = None
     self.left_retry = 3
-    
+    self.remaining_instructions = num_instructions
     self.parent_weights = {}
+    self.job_sla = None
+    self.job_arrival = None
     
   
-  def advance_timer(self, _t) :
+  def advance_timer(self, _t, time_step) :
     if self.status != 2 :
       return
-    if self.timer > 0 :
-      self.timer -= 1
-    if self.timer <=0 :
+    if self.remaining_instructions > 0 :
+      self.completion_time += time_step
+    else :
       self.vm.release_task(self, _t)
     
     

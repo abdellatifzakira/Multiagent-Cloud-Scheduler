@@ -10,14 +10,14 @@ class LeastLoadedScheduler:
         self.servers = None
         self.mode = mode
         self.sorting = sorting
-        self.name = 'LL'
+        self.name = 'LL' + ' : ' + mode
 
         
         assert mode in ['CPU', 'RAM', 'QUEUE', 'HYBRID'], "[INVALID MODE]\nAVAILABLE MODES : CPU | RAM | QUEUE | HYBRID "
-        assert sorting in ['FIFO', 'CPU', 'RUNTIME'], "[INVALID INPUT]\nAVAILABLE SORTING PARAMETERS : FIFO | CPU | RUNTIME"
+        assert sorting in ['FIFO', 'CPU', 'SLA'], "[INVALID INPUT]\nAVAILABLE SORTING PARAMETERS : FIFO | CPU | SLA"
 
 
-    def sort_tasks(self, ready_tasks):
+    def sort_tasks(self, ready_tasks, current_time):
          # sort by arrival time
         match self.sorting :
             case 'FIFO' :
@@ -28,10 +28,51 @@ class LeastLoadedScheduler:
                 ready_tasks.sort(
                     key=lambda task: task.cpu
                 )
-            case 'RUNTIME' :
+            case 'SLA' :
                 ready_tasks.sort(
-                    key=lambda task: task.runtime
+                    key=lambda task: task.job_sla - (current_time - task.job_arrival) - task.num_instructions/250e6
                 )
+                
+                
+    def expected_server_latency(self,server):
+
+        # queued work
+        queued_instructions = sum(
+            task.num_instructions 
+            for task in server.task_queue
+        )
+
+        total_compute = sum(
+            vm.compute_power 
+            for vm in server.vms.values()
+        )
+
+        queue_delay = (
+            queued_instructions / total_compute
+            if total_compute > 0
+            else float("inf")
+        )
+
+
+        # current running tasks
+        vm_finish_times = []
+
+        for vm in server.vms.values():
+
+            remaining = sum(
+                task.remaining_instructions
+                for task in vm.hosted_task.keys()
+            )
+
+            vm_time = remaining / vm.compute_power
+
+            vm_finish_times.append(vm_time)
+
+
+        execution_delay = max(vm_finish_times, default=0)
+
+
+        return queue_delay + execution_delay
     
     def get_least_busy_server(self):
         servers = list(self.server_farm.servers.values())
@@ -43,10 +84,9 @@ class LeastLoadedScheduler:
                 of the hosted asks all divided by the parallelism capacity of the server
                 """
                 loads = [
-                    (s, (sum(tsk.runtime for tsk in s.task_queue) + sum(tsk.timer for tsk in s.hosted_tasks.keys()))/sum(vm.max_concurrent_tasks for vm in s.vms.values())
-                     )
-                    for s in servers
-                ]
+                            (s, self.expected_server_latency(s))
+                            for s in servers
+                        ]
             case 'CPU' :
                 """
                 a score based on the actual cpu usage,
@@ -109,7 +149,7 @@ class LeastLoadedScheduler:
         
         
     def assign_tasks(self, ready_tasks, t):
-        self.sort_tasks(ready_tasks=ready_tasks)
+        self.sort_tasks(ready_tasks=ready_tasks,  current_time=t)
         for task in ready_tasks :
             assert all(parent.status == 0 for parent in task.parents),(
                             f"DAG violation: Task {task.id} scheduled "
