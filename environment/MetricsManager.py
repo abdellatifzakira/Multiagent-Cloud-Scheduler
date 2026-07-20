@@ -30,6 +30,9 @@ class MetricsManager:
         self.results['CUM_DATA_TRANSFER'] = []
         self.results['SLA'] = []
         self.results['SLA_VAR'] = []
+        self.results['JOB_MEAN_COMPLETION_TIME'] = []
+
+        
         
         
     def get_sla_violation_rate(self) :
@@ -40,6 +43,16 @@ class MetricsManager:
                             for job in self.finished_jobs
                         ]))
             return sla_violation_rate
+        else :
+            return 0
+    
+    def get_mean_completion_time(self):
+        if self.finished_jobs != []:
+            mean_completion =np.mean([
+                            (job.end_time - job.time_arrived)
+                            for job in self.finished_jobs
+                        ])
+            return mean_completion
         else :
             return 0
                     
@@ -70,6 +83,7 @@ class MetricsManager:
         self.results['DATA_TRANSFER'].append(self.monitor_data_transfer())
         self.results['CUM_DATA_TRANSFER'] = np.cumsum(self.results['DATA_TRANSFER'])
         self.results['SLA'].append(self.get_sla_violation_rate())
+        self.results['JOB_MEAN_COMPLETION_TIME'].append(self.get_mean_completion_time())
         self.results['SLA_VAR'] = np.diff(self.results['SLA'], prepend=self.results['SLA'][0])
         self.results['CPU_STD'].append(np.std([self.results['CPU'][s][-1] for s in self.results['CPU'].keys()]))
         

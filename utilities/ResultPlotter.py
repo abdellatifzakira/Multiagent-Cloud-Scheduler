@@ -53,24 +53,19 @@ def plot_metrics(results_list,
     plt.style.use("seaborn-v0_8-darkgrid")
 
 
-    #################################################
-    # PAGE 1 : GENERAL METRICS
-    #################################################
-
-
     metrics = [
-        ("CPU_STD","CPU Utilization STD"),
-        ("POWER_PRICE","Power Consumption / Price"),
-        ("DATA_TRANSFER","Data Transfer"),
-        ("CUM_DATA_TRANSFER","Cumulative Data Transfer"),
-        ("SLA","SLA Violations (number of jobs)")
+        ("CPU_STD","Standard Deviation\nVirtual CPU Efficiency", "STD CPU Efficiency"),
+        ("POWER_PRICE","Power Price Over Time\n(Smoothed)", "Power Price"),
+        ("CUM_DATA_TRANSFER","Cumulative Data Transfer Over Time", "Data Transfer"),
+        ("SLA","SLA Violations", "Number Of Jobs"),
+        ("JOB_MEAN_COMPLETION_TIME", "Mean Completion\nTime Per Job", "Completion Time")
     ]
 
 
     rows,cols = find_closest_factors(len(metrics))
 
 
-    fig,axes = plt.subplots(
+    fig, axes = plt.subplots(
         rows,
         cols,
         figsize=(6*cols,4*rows),
@@ -82,7 +77,7 @@ def plot_metrics(results_list,
 
 
 
-    for idx,(metric,title) in enumerate(metrics):
+    for idx,(metric,title, label) in enumerate(metrics):
 
         ax = axes[idx]
 
@@ -111,15 +106,8 @@ def plot_metrics(results_list,
 
 
         ax.set_title(title)
-
-
         ax.set_xlabel("Time")
-
-
-        if metric=="SLA":
-            ax.set_ylabel("Jobs")
-        else:
-            ax.set_ylabel(metric)
+        ax.set_ylabel(label)
 
 
         ax.legend()
@@ -142,12 +130,6 @@ def plot_metrics(results_list,
 
     plt.tight_layout()
     plt.show()
-
-
-
-    #################################################
-    # PAGE 2 : CPU PER SERVER FARM
-    #################################################
 
 
     schedulers=len(results_list)
@@ -201,7 +183,8 @@ def plot_metrics(results_list,
             t,
             cpu_mean,
             linewidth=2,
-            label="Average CPU"
+            label="Average CPU Efficiency",
+            color = "#008B33"
         )
 
 
@@ -210,7 +193,8 @@ def plot_metrics(results_list,
             cpu_min,
             cpu_max,
             alpha=0.25,
-            label="CPU range"
+            label="CPU Efficiency range",
+            color = "#FF0000"
         )
 
 
@@ -218,13 +202,13 @@ def plot_metrics(results_list,
 
 
         ax.set_title(
-            f"{res['NAME']} CPU\n"
+            f"Virtual CPU Efficiency : {res['NAME']}\n"
             f"Mean STD = {np.mean(res['CPU_STD']):.3f}"
         )
 
 
         ax.set_xlabel("Time")
-        ax.set_ylabel("CPU Utilization")
+        ax.set_ylabel("CPU Efficiency")
 
 
         ax.legend()

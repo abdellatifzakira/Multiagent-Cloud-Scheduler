@@ -26,7 +26,7 @@ class Server:
         mode : str = 'EXECUTION_TIME',
     ):
         assert mode in ['SIMPLE', 'LEAST_LOADED', 'EXECUTION_TIME', 'COLLABORATIVE'], \
-            "[BAD INPUT] : AVAILABLE MODES SIMPLE | LEAST_LOADED | COLLABORATIVE"
+            "[BAD INPUT] : AVAILABLE MODES SIMPLE | LEAST_LOADED | EXECUTION_TIME | COLLABORATIVE"
         
         if id is None :
             self.id = Server._server_count

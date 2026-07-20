@@ -79,8 +79,12 @@ class Server_Farm:
                                 betas = [2, 4],
                                 server_count = 3,
                                 power_price = 0.1,
-                                virtual_allocation = [0.85, 0.9]
+                                virtual_allocation = [0.85, 0.9],
+                                mode = 'SIMPLE'
                                 ):
+        
+        assert mode in ['SIMPLE', 'LEAST_LOADED', 'EXECUTION_TIME', 'COLLABORATIVE'], \
+            "[BAD INPUT] : AVAILABLE MODES SIMPLE | LEAST_LOADED | EXECUTION_TIME | COLLABORATIVE"
         
         assert server_count > 0, \
             "Invalid simulation parameter : server count must be > 1"
@@ -118,7 +122,8 @@ class Server_Farm:
                 compute_power=c_compute_power[_],
                 alpha=alpha[_],
                 beta=beta[_],
-                virtualization_level = virtual_quota
+                virtualization_level = virtual_quota,
+                mode = mode
             )
             
 

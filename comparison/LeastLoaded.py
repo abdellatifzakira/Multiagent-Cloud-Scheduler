@@ -10,7 +10,7 @@ class LeastLoadedScheduler:
         self.servers = None
         self.mode = mode
         self.sorting = sorting
-        self.name = 'LL' + ' : ' + mode
+        self.name = 'LL' + ' - ' + mode
 
         
         assert mode in ['CPU', 'RAM', 'QUEUE', 'HYBRID'], "[INVALID MODE]\nAVAILABLE MODES : CPU | RAM | QUEUE | HYBRID "

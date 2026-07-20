@@ -72,7 +72,8 @@ server_farm = Server_Farm().build_random_server_farms(
     alphas = [100, 500],
     betas = [2, 5],
     server_count = 3,
-    virtual_allocation= [0.9, 0.95]
+    virtual_allocation= [0.9, 0.95],
+    mode = 'EXECUTION_TIME'
 )
 
 exp = Experiment(
