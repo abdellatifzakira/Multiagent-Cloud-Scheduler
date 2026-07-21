@@ -150,53 +150,168 @@ def plot_job_dags(jobs_list, figsize=(20, 5)):
 
 def plot_server_network(farm):
 
-    G = farm.graph
+    # ==============================
+    # Convert igraph -> NetworkX
+    # ==============================
 
-    #layout = G.layout("fr")
-    layout = G.layout_circle()
+    ig_G = farm.graph
 
-    fig, ax = plt.subplots(figsize=(10,8))
-    
-    edge_colors = []
-    edge_width = []
-    angles = []
+    G = nx.Graph()
 
-    bandwidths = G.es["bandwidth"]
-    max_bw = max(bandwidths)
+    # Copy nodes
+    for node in ig_G.vs:
+        G.add_node(
+            node.index,
+            **node.attributes()
+        )
+
+    # Copy edges
+    for edge in ig_G.es:
+        G.add_edge(
+            edge.source,
+            edge.target,
+            **edge.attributes()
+        )
+
+
+    # ==============================
+    # Layout
+    # ==============================
+
+    layout = nx.circular_layout(G)
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+
+    # ==============================
+    # Bandwidth classification
+    # ==============================
+
+    bandwidths = [
+        G[u][v]["bandwidth"]
+        for u, v in G.edges()
+    ]
+
     min_bw = min(bandwidths)
+    max_bw = max(bandwidths)
 
-    for idx, bw in enumerate(bandwidths):
-        if bw > 3072:
-            edge_colors.append("#FF0000")  # high bandwidth
-            edge_width.append(10)
-        elif bw > 2048:
-            edge_colors.append("#FFA600")      # medium
-            edge_width.append(5)
+    step = (max_bw - min_bw) / 3
+
+    low_threshold = min_bw + step
+    high_threshold = min_bw + 2 * step
+
+
+    edge_colors = []
+    edge_widths = []
+
+
+    for bw in bandwidths:
+
+        if bw > high_threshold:
+            # High bandwidth
+            edge_colors.append("#FF0000")
+            edge_widths.append(10)
+
+        elif bw > low_threshold:
+            # Medium bandwidth
+            edge_colors.append("#FFA600")
+            edge_widths.append(5)
+
         else:
-            edge_colors.append("#000769")         # low
-            edge_width.append(3)
-        angles.append(2*np.pi*idx/len(bandwidths))
-        
+            # Low bandwidth
+            edge_colors.append("#000769")
+            edge_widths.append(3)
 
-    ig.plot(
+
+
+    # ==============================
+    # Node labels
+    # ==============================
+
+    node_labels = {}
+
+    for node, data in G.nodes(data=True):
+
+        cpu = data.get("cpu", "N/A")
+        ram = data.get("ram", "N/A")
+
+        node_labels[node] = (
+            f"S{node}\n"
+            f"CPU:{cpu}\n"
+            f"RAM:{ram}"
+        )
+
+
+    # ==============================
+    # Draw nodes
+    # ==============================
+
+    nx.draw_networkx_nodes(
         G,
-        target=ax,
-        layout=layout,
-        vertex_label=[
-            f"S{i}\nCPU:{v['cpu']}\nRAM:{v['ram']}"
-            for i, v in enumerate(G.vs)
-        ],
-        edge_label=G.es["bandwidth"],
-        edge_label_color = edge_colors,
-        vertex_color="lightblue",
-        vertex_label_color = "#0000FF",
-        edge_color = edge_colors,
-        vertex_size=25,
-        vertex_label_dist=3.5,
-        vertex_label_angle = angles,
-        edge_width=edge_width,
+        layout,
+        node_color="lightblue",
+        node_size=1200,
+        ax=ax
     )
+
+
+    # ==============================
+    # Draw edges
+    # ==============================
+
+    nx.draw_networkx_edges(
+        G,
+        layout,
+        edge_color=edge_colors,
+        width=edge_widths,
+        ax=ax
+    )
+
+
+    # ==============================
+    # Draw node labels
+    # ==============================
+
+    nx.draw_networkx_labels(
+        G,
+        layout,
+        labels=node_labels,
+        font_color="blue",
+        font_size=8,
+        ax=ax
+    )
+
+
+    # ==============================
+    # Edge bandwidth labels
+    # ==============================
+
+    edge_labels = {
+        (u, v):
+        f"{G[u][v]['bandwidth']}"
+        for u, v in G.edges()
+    }
+
+
+    nx.draw_networkx_edge_labels(
+        G,
+        layout,
+        edge_labels=edge_labels,
+        font_size=8,
+        label_pos=0.75,
+        ax=ax
+    )
+
+
+    # ==============================
+    # Final plot
+    # ==============================
+
     plt.title("Server Farm Network Topology")
+
+    plt.axis("off")
     plt.margins(0.25)
+
     plt.tight_layout()
+
     plt.show()

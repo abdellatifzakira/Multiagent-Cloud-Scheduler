@@ -31,6 +31,7 @@ class MetricsManager:
         self.results['SLA'] = []
         self.results['SLA_VAR'] = []
         self.results['JOB_MEAN_COMPLETION_TIME'] = []
+        self.results['NETWORK_LATENCY'] = []
 
         
         
@@ -53,6 +54,21 @@ class MetricsManager:
                             for job in self.finished_jobs
                         ])
             return mean_completion
+        else :
+            return 0
+    
+    def get_network_latency(self):
+        if self.jobs != []:
+            avg_latency = 0
+            latencies = [
+                        (task.time_data_arrival - task.start_time)
+                        for job in self.jobs.values() for task in job.tasks.values()
+                        if task.time_data_arrival is not None and
+                        task.start_time is not None
+                        ]
+            if latencies :
+                avg_latency = np.sum(latencies)
+            return avg_latency
         else :
             return 0
                     
@@ -86,6 +102,7 @@ class MetricsManager:
         self.results['JOB_MEAN_COMPLETION_TIME'].append(self.get_mean_completion_time())
         self.results['SLA_VAR'] = np.diff(self.results['SLA'], prepend=self.results['SLA'][0])
         self.results['CPU_STD'].append(np.std([self.results['CPU'][s][-1] for s in self.results['CPU'].keys()]))
+        self.results['NETWORK_LATENCY'].append(self.get_network_latency())
         
         
         
@@ -107,6 +124,7 @@ class MetricsManager:
         print(f"CUM DATA TRANSFER : RANGE = {np.max(self.results['CUM_DATA_TRANSFER']), np.min(self.results['CUM_DATA_TRANSFER'])}" )
         print(f"CPU STD : MEAN = {np.mean(self.results['CPU_STD'])}, RANGE = {np.max(self.results['CPU_STD']), np.min(self.results['CPU_STD'])}" )
         print(f"FINAL SLA VIOLATION RATE (IN JOB COUNT) : {max(self.results['SLA'])}/{len(self.finished_jobs)}")
+        print(f"FINAL NETWORK LATENCY : {max(self.results['NETWORK_LATENCY'])}")
         print(f"TIMELINE LENGTH : {len(self.results['TIMELINE'])}")
     
     

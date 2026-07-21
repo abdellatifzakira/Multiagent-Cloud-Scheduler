@@ -36,6 +36,14 @@ class Server_Farm:
         self.all_rams = sum([server.c_ram for server in self.servers.values()])  if servers else 0
         
         self.bandwidths = {}
+        
+        self.communication_enabled = None
+        
+        
+        
+    def set_communication_mode(self):
+        for server in self.servers.values():
+            server.network_enabled = self.communication_enabled
     
     def spawn_server(self, server):
         server.server_farm_id = self.id
@@ -209,6 +217,7 @@ class Server_Farm:
                 ram=vm_ram,
                 compute=vm_compute
             )
+            
 
             server_list.append(server)
         

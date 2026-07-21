@@ -43,6 +43,7 @@ class NetworkManager:
             sent_data.setdefault(key, 0)
 
             max_transfer = bw * time_step
+            
 
             while remaining_data > 0 and sent_data[key] < max_transfer:
 

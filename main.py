@@ -12,16 +12,16 @@ from ExperimentRunner import Experiment
 from environment.NetworkManager import NetworkManager
 
 # REPRODUCIBILITY
-global_seed = 100
+global_seed = 42
 random.seed(global_seed)
 np.random.seed(global_seed)
 
 #WORKLOAD
-num_jobs = 360
+num_jobs = 150
 mean_job_gap = 0.01
 num_tasks_per_job = 5
 jobs_per_phase = num_jobs // 3
-edge_probability =  0.05 # controls how fuzzy the jobs are
+edge_probability =  0.75 # controls how fuzzy the jobs are
 
 # Light
 light_gap = np.ceil(
@@ -84,18 +84,19 @@ plot_server_network(farm= server_farm)
 
 
 exp = Experiment(
-    infrastructure = server_farm,
-    jobs  = jobs,
-    scenarios_edges = [min(arrival_medium), min(arrival_surge)],
-    schedulers  = [RoundRobinScheduler(),
-                   LeastLoadedScheduler(mode='QUEUE', sorting='SLA'),
-                   LeastLoadedScheduler(mode='CPU', sorting='SLA'),
-                   DataLocalityAwareScheduler(),
-                   EnergyAwareScheduler()
-                   ],
-    time_step = 0.1,
-    network_manager = NetworkManager()
-           )
+                infrastructure = server_farm,
+                jobs  = jobs,
+                scenarios_edges = [min(arrival_medium), min(arrival_surge)],
+                schedulers  = [RoundRobinScheduler(),
+                            LeastLoadedScheduler(mode='QUEUE', sorting='SLA'),
+                            LeastLoadedScheduler(mode='CPU', sorting='SLA'),
+                            DataLocalityAwareScheduler(),
+                            EnergyAwareScheduler()
+                            ],
+                time_step = 0.05,
+                network_manager = NetworkManager(),
+                network_overhead_enabled = False
+                )
 
 exp.build_environment()
 exp.run_experiment()

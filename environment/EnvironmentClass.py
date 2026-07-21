@@ -8,6 +8,7 @@ class Environment:
                  scheduler = None,
                  time_step = 0.01,
                  network_manager = None,
+                 network_overhead = False,
                  ):
         self.server_farm = server_farm
         self.job_manager = job_manager
@@ -17,8 +18,13 @@ class Environment:
         self.scheduler.server_farm = self.server_farm
         self.scheduler.servers = self.server_farm.servers
         self.network_manager = network_manager
+        self.network_overhead = network_overhead
+        
+        self.server_farm.communication_enabled = self.network_overhead 
+        self.server_farm.set_communication_mode()
         
         network_manager.server_farm = server_farm
+
         
     def is_running(self) :
         return ( self.job_manager.workload or
@@ -58,13 +64,14 @@ class Environment:
             self.server_farm.update_farm_state(t=t, time_step = self.time_step)
             self.metrics_manager.collect_data(self.job_manager, t)
             
-            submitted_data = self.server_farm.submit_packets()
-            if len(submitted_data) > 0 :
-                self.network_manager.update_data_packets(submitted_data)
-                self.network_manager.resolve_routing()
-            
-            
-            self.network_manager.distribute_data_payloads(t, self.time_step)
+            if self.network_overhead :
+                submitted_data = self.server_farm.submit_packets()
+                if len(submitted_data) > 0 :
+                    self.network_manager.update_data_packets(submitted_data)
+                    self.network_manager.resolve_routing()
+                
+                
+                self.network_manager.distribute_data_payloads(t, self.time_step)
             
             t += self.time_step
         

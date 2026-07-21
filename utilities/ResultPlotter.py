@@ -58,7 +58,8 @@ def plot_metrics(results_list,
         ("POWER_PRICE","Power Price Over Time\n(Smoothed)", "Power Price"),
         ("CUM_DATA_TRANSFER","Cumulative Data Transfer Over Time", "Data Transfer"),
         ("SLA","SLA Violations", "Number Of Jobs"),
-        ("JOB_MEAN_COMPLETION_TIME", "Mean Completion\nTime Per Job", "Completion Time")
+        ("JOB_MEAN_COMPLETION_TIME", "Mean Completion\nTime Per Job", "Completion Time"),
+        ("NETWORK_LATENCY", "Cumulative Network Latency", "Network Latency")
     ]
 
 

@@ -83,8 +83,8 @@ class Vm:
         for child in task.children:
             print("child ready", child.id, child.job_id)
         """
-        
-        self.server.save_data(task, t)
+        if self.server.network_enabled:
+            self.server.save_data(task, t)
 
         self.hosted_task.pop(task)
         self.server.hosted_tasks.pop(task)

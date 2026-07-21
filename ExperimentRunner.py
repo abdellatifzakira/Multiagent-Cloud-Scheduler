@@ -13,6 +13,7 @@ class Experiment:
                      schedulers = [],
                      time_step = 0.01,
                      network_manager = None,
+                     network_overhead_enabled = False,
                 ):
             self.infrastructure = infrastructure
             self.jobs = jobs
@@ -24,6 +25,12 @@ class Experiment:
             self.environments = {}
             
             self.results = {}
+            
+            self.network_overhead_enabled = network_overhead_enabled
+            
+            if not self.network_overhead_enabled :
+                print("Network communcation overhead is disabled\n"
+                      "The experiment is under the assumption of infinite bandwidth")
         
             
                 
@@ -46,7 +53,8 @@ class Experiment:
                                                         ),
                                                         scheduler=scheduler,
                                                         time_step=self.time_step,
-                                                        network_manager = self.network_manager
+                                                        network_manager = self.network_manager,
+                                                        network_overhead = self.network_overhead_enabled
                                                     )
         
         def run_experiment(self):

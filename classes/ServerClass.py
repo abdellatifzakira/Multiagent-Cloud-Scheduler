@@ -59,6 +59,7 @@ class Server:
         self.received_data = {}
         self.saved_data = {}
         
+        self.network_enabled = None
     
     def request_data(self):
         requested_data = []
@@ -95,6 +96,8 @@ class Server:
         
     
     def check_data_availability(self, task):
+        if not self.network_enabled:
+            return True
         required_data = task.parent_weights
         for parent in required_data.keys():
             total_received_data = 0
@@ -200,6 +203,8 @@ class Server:
                 break
             if task.status == 4 : # must be pending
                 if self.check_data_availability(task = task) and not task.scheduled:
+                    if  task.time_data_arrival  is None :
+                        task.time_data_arrival = t
                     match self.mode :
                         case 'SIMPLE' :
                             hosted  = self.first_fit(task=task)
