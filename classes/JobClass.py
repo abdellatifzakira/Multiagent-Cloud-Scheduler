@@ -177,7 +177,7 @@ class Job:
             for i in range(num_tasks_per_job - 1):
                 for j in range(i + 1, num_tasks_per_job):
                     if np.random.random() < edge_probability:  # chance of edge
-                        weight = np.random.randint(1, 5)
+                        weight = np.random.randint(256, 1025)
                         data_transfer_weights[(i, j)] = weight
             
             job = Job().spawn_job(

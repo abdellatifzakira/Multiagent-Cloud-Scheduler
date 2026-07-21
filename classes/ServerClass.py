@@ -53,6 +53,54 @@ class Server:
         
         self.virtual_capacity = self.virtualization_level*self.c_cpu
         self.peak_cpu = 0
+        
+        self.tasks_waiting_data = []
+        self.outgoing_data = {}
+        self.received_data = {}
+        
+    
+    def request_data(self):
+        requested_data = []
+        for child in self.waiting_queue :
+            if not child.data_requested :
+                requested_data.append(child)
+                child.data_requested = True
+        return requested_data
+            
+            
+    def save_data(self, task, t):
+        for child in task.children :
+            # (sender, receiver, time) : [sent data, status: 0 -> pending, 1 -> sent]
+            self.outgoing_data[(task, child, t)] = [child.parent_weights[task], 0]
+        
+    
+    def send_data(self):
+        ready_payloads = {key: value for key, value in self.outgoing_data.items() if value[1] == 0 and key[1].server is not None}
+        if ready_payloads:
+            for value in self.outgoing_data.values():
+                value[1] = 1 # changing the status
+        return ready_payloads
+    
+    
+    def has_data(self):
+        ready_payloads = {key: value for key, value in self.outgoing_data.items() if value[1] == 0 and key[1].server is not None}
+        return ready_payloads != {}
+
+        
+    
+    def check_data_availability(self, task):
+        required_data = task.parent_weights
+        for parent in required_data.keys():
+            #print(f"{len(task.parents) = }, {task.id = }|{task.job_id = }")
+            try :
+                total_received_data = self.received_data[(parent, task)]
+                not_received = (total_received_data < required_data[parent])
+                if not_received :
+                    return False
+            except KeyError:
+                return False
+        return True
+        
 
     def populate_vm(self, vms):
         if vms is None :
@@ -130,7 +178,6 @@ class Server:
             if vm.check_req_constraint(task):
                 if vm.host_task(task):
                     self.hosted_tasks[task] = vm
-                    task.server = self
                     task.vm = vm
                     return True
         return False
@@ -144,21 +191,29 @@ class Server:
                 task = self.task_queue[_idx]  # look at first task
             except IndexError :
                 break
-            if task.status == 4: # must be pending
-                match self.mode :
-                    case 'SIMPLE' :
-                        hosted  = self.first_fit(task=task)
-                    case 'LEAST_LOADED' :
-                        hosted  = self.least_loaded(task=task)
-                    case 'EXECUTION_TIME' :
-                        hosted  = self.fastest_vm(task=task)
-                
-                if hosted :
-                    self.task_queue.rotate(-_idx)
-                    self.task_queue.popleft()
-                    self.task_queue.rotate(_idx)
-                    _idx = 0 
+            if task.status == 4 : # must be pending
+                if self.check_data_availability(task = task) :
+                    #print(f"will be scheduled, {task.id = }|{task.job_id = }")
+                    match self.mode :
+                        case 'SIMPLE' :
+                            hosted  = self.first_fit(task=task)
+                        case 'LEAST_LOADED' :
+                            hosted  = self.least_loaded(task=task)
+                        case 'EXECUTION_TIME' :
+                            hosted  = self.fastest_vm(task=task)
+                    
+                    if hosted :
+                        #print(f"Hosted, {task.id = }|{task.job_id = }")
+                        self.task_queue.rotate(-_idx)
+                        self.task_queue.popleft()
+                        self.task_queue.rotate(_idx)
+                        _idx = 0 
+                    else :
+                        _idx +=1
                 else :
+                    #print(f"waiting for data, {task.id = }|{task.job_id = }")
+                    if task not in self.tasks_waiting_data :
+                        self.tasks_waiting_data.append(task)
                     _idx +=1
             else:
                 self.task_queue.popleft()
@@ -167,6 +222,7 @@ class Server:
         if task.size + self.get_storage_usage() <= self.storage :
             task.status = 4 # waiting in the queue
             self.task_queue.append(task)
+            task.server = self
             task.start_time = t
             return True
         return False
@@ -195,6 +251,25 @@ class Server:
     def get_power_consumption(self):
         cpu_utilization = self.cpu_utilization()
         return  round((cpu_utilization**self.beta)*self.alpha + self.static_power, ndigits=3)
+    
+    
+    """
+    >> the new energy consumption after a cpu variation of "e" assuming "e" is minimal "e<<cpu"
+    >> E(cpu + e) = E(cpu) + e * dE/dcpu (cpu)
+    >> E(cpu + e) = E(cpu) + e * alpha * beta * (cpu^(beta -1))
+    >> the marginal power consumption : e * alpha * beta * (cpu^(beta -1))
+    """
+    def get_cpu_usage_variation(self, dcpu):
+        "get the cpu percentage variation caused by a task requirement cpu"
+        return dcpu/self.c_cpu
+    
+    def expected_power_variation(self, task) :
+        dcpu = self.get_cpu_usage_variation(task.cpu)
+        expected_power = dcpu * self.alpha * self.beta * (self.cpu_utilization()**(self.beta -1))
+        
+        return self.get_power_consumption() + expected_power
+    
+
     
     
     def get_storage_usage(self):

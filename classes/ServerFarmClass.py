@@ -35,7 +35,7 @@ class Server_Farm:
         
         self.all_rams = sum([server.c_ram for server in self.servers.values()])  if servers else 0
         
-        self.communication_speed = []
+        self.bandwidths = {}
     
     def spawn_server(self, server):
         server.server_farm_id = self.id
@@ -65,8 +65,42 @@ class Server_Farm:
     def update_farm_state(self,t, time_step):
         for server in self.servers.values() :
             server.time_step_vm(_t=t,time_step = time_step)
+            
+            
+    def build_graph(self, bandwidths):
+        if not len(bandwidths):
+            return None
+        edges = list(bandwidths.keys())
+        weights = list(bandwidths.values())
+        vertices = set()
         
+        servers = self.servers.values()
         
+        for u, v in edges:
+            vertices.add(u)
+            vertices.add(v)
+
+        assert len(vertices) <= len(servers), "servers bandwidths mismatch!"
+
+        graph = ig.Graph(directed=False)
+
+        graph.add_vertices(len(servers))
+        graph.add_edges(edges)
+
+        # assign weights
+        graph.es["bandwidth"] = weights
+        
+        # assign attributes
+        cpus = [s.c_cpu for s in servers]
+        rams = [s.c_ram for s in servers]
+        graph.vs["cpu"] = cpus
+        graph.vs["ram"] = rams
+        
+
+        return graph
+            
+
+
     
     @staticmethod
     def build_random_server_farms(
@@ -110,12 +144,14 @@ class Server_Farm:
         c_compute_power = [round(np.random.uniform(low= min(compute_power_range), high=max(compute_power_range)),ndigits = 0) for _ in range(server_count)]
         alpha = [round(np.random.uniform(low= min(alphas), high=max(alphas)),ndigits = 2) for _ in range(server_count)]
         beta = [round(np.random.uniform(low= min(betas), high=max(betas)),ndigits = 2) for _ in range(server_count)]
+        #beta = [1 for _ in range(server_count)] # linear power consumption across all servers
         server_list = []
         for _ in range(server_count):
             
             virtual_quota = round(np.random.uniform(low= min(virtual_allocation), high=max(virtual_allocation)),ndigits = 3)
 
             server = Server(
+                id= _,
                 c_cpu=c_cpu[_],
                 c_ram=c_ram[_],
                 storage=c_storage[_],
@@ -175,11 +211,24 @@ class Server_Farm:
             )
 
             server_list.append(server)
+        
+        
+        bandwidths = {}
+        for i in range(len(server_list)):
+            for j in range(i+1, len(server_list)):
+                    weight = np.random.randint(1024, 4096)
+                    bandwidths[(i, j)] = weight
+        
+        
         farm = Server_Farm(
             servers = server_list,
             power_price = power_price,
             num_servers = server_count
         )
+        
+        farm.bandwidths = bandwidths
+        
+        farm.graph = farm.build_graph(bandwidths = bandwidths)
         return farm
                     
     
@@ -192,85 +241,13 @@ class Server_Farm:
                 vm.pending_tasks = deque()
                 vm.used_cpu = 0.0
                 vm.used_ram = 0.0
+    
+    
+    def submit_packets(self):
+        packets = []
+        for server in self.servers.values():
+            if server.has_data() :
+                packets.append(server.send_data())
+        return packets
                 
                 
-
-
-# QUICK TESTS :
-if __name__ == "__main__":
-    from ServerClass import Server
-    from TaskClass import  Task
-    
-    server_1 = Server(
-        c_cpu= 1.0,
-        c_ram=1.0,
-        server_farm_id=0,
-        alpha=0.1
-    )
-    
-    server_2 = Server(
-        c_cpu= 1.0,
-        c_ram=1.0,
-        server_farm_id=0,
-        alpha=0.1
-    )
-    
-    farm = Server_Farm(
-        id = 0,
-        servers= [server_1, server_2],
-        num_servers= 2
-    )
-    
-    server_1.spawn_vm_group(cpu = [0.3, 0.1], ram=[0.25, 0.25])
-    server_2.spawn_vm_group(cpu = [0.3 , 0.3, 0.1], ram=[0.25, 0.25, 0.25])
-    
-    task_2 = Task(
-        id = 0,
-        job_id= 0,
-        cpu=0.1,
-        ram=0.1,
-        status=3,
-        runtime=20
-    )
-    
-    task_1 = Task(
-        id = 1,
-        job_id= 0,
-        cpu=0.1,
-        ram=0.1,
-        status=3,
-        runtime=20
-    )
-    
-    server_1.host_task_in_server(task = task_1)
-    server_2.host_task_in_server(task = task_2)
-    
-    print(len(farm.available_servers())) # expecting 2 both servers still have computational power
-    print("SERVER 2 IS AVAILABLE"  if server_2.is_available() else "SERVER 2 IS UNAVAILABLE" ) # AVAILABLE
-    print("SERVER 1 IS AVAILABLE"  if server_1.is_available() else "SERVER 1 IS UNAVAILABLE" ) # AVAILABLE
-    
-    # overloading the first server :
-    
-    task_3 = Task(
-        id = 2,
-        job_id= 0,
-        cpu=0.1,
-        ram=0.1,
-        status=3,
-        runtime=20
-    )
-    
-    server_1.host_task_in_server(task = task_3)
-    
-    print(len(farm.available_servers())) # expecting 1, only one server still have computational power
-    print("SERVER 2 IS AVAILABLE"  if server_2.is_available() else "SERVER 2 IS UNAVAILABLE" ) # AVAILABLE
-    print("SERVER 1 IS AVAILABLE"  if server_1.is_available() else "SERVER 1 IS UNAVAILABLE" ) # UNAVAILABLE
-    
-    computedPrice = farm.power_price*(server_1.cpu_utilization()*server_1.alpha +
-                                      server_1.static_power +
-                                      server_2.static_power +
-                                      server_2.cpu_utilization()*server_2.alpha)
-    print(f"EXPECTED POWER PRICE : ", round(computedPrice,3) ,"COMPUTED POWER PRICE : ", round(farm.get_power_price(),3))
-    
-    
-    

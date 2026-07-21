@@ -102,7 +102,7 @@ class MetricsManager:
          
         print(f"MEAN COMPLETION TIME : {mean_completion_time}")
         print(f"95TH PERCENTILE : {percentile_95}")
-        print(f"POWER PRICE : MEAN = {np.mean(self.results['POWER_PRICE'])}, RANGE = {np.max(self.results['POWER_PRICE']), np.min(self.results['POWER_PRICE'])}" )
+        print(f"POWER PRICE : MEAN = {np.mean(self.results['POWER_PRICE'])}, RANGE = {np.max(self.results['POWER_PRICE']), np.min(self.results['POWER_PRICE'])}, STD : {np.std(self.results['POWER_PRICE'])} " )
         print(f"DATA TRANSFER : MEAN = {np.mean(self.results['DATA_TRANSFER'])}, RANGE = {np.max(self.results['DATA_TRANSFER']), np.min(self.results['DATA_TRANSFER'])}" )
         print(f"CUM DATA TRANSFER : RANGE = {np.max(self.results['CUM_DATA_TRANSFER']), np.min(self.results['CUM_DATA_TRANSFER'])}" )
         print(f"CPU STD : MEAN = {np.mean(self.results['CPU_STD'])}, RANGE = {np.max(self.results['CPU_STD']), np.min(self.results['CPU_STD'])}" )

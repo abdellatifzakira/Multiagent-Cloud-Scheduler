@@ -77,6 +77,12 @@ class Vm:
         task.end_time = t
         task.status = 0
 
+        print("task finished", task.id, task.job_id)
+        for child in task.children:
+            print("child ready", child.id, child.job_id)
+        
+        self.server.save_data(task, t)
+
         self.hosted_task.pop(task)
         self.server.hosted_tasks.pop(task)
         self.completed_tasks += 1

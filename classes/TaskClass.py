@@ -35,6 +35,7 @@ class Task:
     self.parent_weights = {}
     self.job_sla = None
     self.job_arrival = None
+    self.data_requested = False
     
   
   def advance_timer(self, _t, time_step) :

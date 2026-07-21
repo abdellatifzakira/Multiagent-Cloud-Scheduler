@@ -12,12 +12,14 @@ class Experiment:
                      scenarios_edges = [],
                      schedulers = [],
                      time_step = 0.01,
+                     network_manager = None,
                 ):
             self.infrastructure = infrastructure
             self.jobs = jobs
             self.scenarios_edges = scenarios_edges
             self.schedulers = schedulers
             self.time_step = time_step
+            self.network_manager = network_manager
             
             self.environments = {}
             
@@ -43,7 +45,8 @@ class Experiment:
                                                             jobs=job_copy
                                                         ),
                                                         scheduler=scheduler,
-                                                        time_step=self.time_step
+                                                        time_step=self.time_step,
+                                                        network_manager = self.network_manager
                                                     )
         
         def run_experiment(self):

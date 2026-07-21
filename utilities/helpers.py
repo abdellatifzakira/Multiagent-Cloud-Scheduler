@@ -146,3 +146,57 @@ def plot_job_dags(jobs_list, figsize=(20, 5)):
     
     plt.tight_layout()
     plt.show()
+    
+
+def plot_server_network(farm):
+
+    G = farm.graph
+
+    #layout = G.layout("fr")
+    layout = G.layout_circle()
+
+    fig, ax = plt.subplots(figsize=(10,8))
+    
+    edge_colors = []
+    edge_width = []
+    angles = []
+
+    bandwidths = G.es["bandwidth"]
+    max_bw = max(bandwidths)
+    min_bw = min(bandwidths)
+
+    for idx, bw in enumerate(bandwidths):
+        if bw > 3072:
+            edge_colors.append("#FF0000")  # high bandwidth
+            edge_width.append(10)
+        elif bw > 2048:
+            edge_colors.append("#FFA600")      # medium
+            edge_width.append(5)
+        else:
+            edge_colors.append("#000769")         # low
+            edge_width.append(3)
+        angles.append(2*np.pi*idx/len(bandwidths))
+        
+
+    ig.plot(
+        G,
+        target=ax,
+        layout=layout,
+        vertex_label=[
+            f"S{i}\nCPU:{v['cpu']}\nRAM:{v['ram']}"
+            for i, v in enumerate(G.vs)
+        ],
+        edge_label=G.es["bandwidth"],
+        edge_label_color = edge_colors,
+        vertex_color="lightblue",
+        vertex_label_color = "#0000FF",
+        edge_color = edge_colors,
+        vertex_size=25,
+        vertex_label_dist=3.5,
+        vertex_label_angle = angles,
+        edge_width=edge_width,
+    )
+    plt.title("Server Farm Network Topology")
+    plt.margins(0.25)
+    plt.tight_layout()
+    plt.show()
