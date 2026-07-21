@@ -57,6 +57,7 @@ class Server:
         self.tasks_waiting_data = []
         self.outgoing_data = {}
         self.received_data = {}
+        self.saved_data = {}
         
     
     def request_data(self):
@@ -70,20 +71,25 @@ class Server:
             
     def save_data(self, task, t):
         for child in task.children :
-            # (sender, receiver, time) : [sent data, status: 0 -> pending, 1 -> sent]
-            self.outgoing_data[(task, child, t)] = [child.parent_weights[task], 0]
+            # (sender, receiver) : [sent data, time, status: 0 -> pending, 1 -> sent]
+            self.saved_data[(task, child)] = [child.parent_weights[task], t, 0]
         
     
     def send_data(self):
-        ready_payloads = {key: value for key, value in self.outgoing_data.items() if value[1] == 0 and key[1].server is not None}
+        ready_payloads = {key: value for key, value in self.saved_data.items() if value[2] == 0 and
+                          key[1].server is not None and
+                          key[1].server != key[0].server }
+        
         if ready_payloads:
-            for value in self.outgoing_data.values():
-                value[1] = 1 # changing the status
+            for value in ready_payloads.values():
+                value[2] = 1 # changing the status
         return ready_payloads
     
     
     def has_data(self):
-        ready_payloads = {key: value for key, value in self.outgoing_data.items() if value[1] == 0 and key[1].server is not None}
+        ready_payloads = {key: value for key, value in self.saved_data.items() if value[2] == 0 and
+                          key[1].server is not None and
+                          key[1].server != key[0].server}
         return ready_payloads != {}
 
         
@@ -91,14 +97,15 @@ class Server:
     def check_data_availability(self, task):
         required_data = task.parent_weights
         for parent in required_data.keys():
-            #print(f"{len(task.parents) = }, {task.id = }|{task.job_id = }")
-            try :
+            total_received_data = 0
+            saved_data = 0
+            if (parent, task) in self.received_data.keys() :
                 total_received_data = self.received_data[(parent, task)]
-                not_received = (total_received_data < required_data[parent])
-                if not_received :
+            if (parent, task) in self.saved_data.keys() :
+                saved_data = self.saved_data[(parent, task)][0]
+            not_received = (total_received_data + saved_data < required_data[parent])
+            if not_received :
                     return False
-            except KeyError:
-                return False
         return True
         
 
@@ -192,8 +199,7 @@ class Server:
             except IndexError :
                 break
             if task.status == 4 : # must be pending
-                if self.check_data_availability(task = task) :
-                    #print(f"will be scheduled, {task.id = }|{task.job_id = }")
+                if self.check_data_availability(task = task) and not task.scheduled:
                     match self.mode :
                         case 'SIMPLE' :
                             hosted  = self.first_fit(task=task)
@@ -203,15 +209,14 @@ class Server:
                             hosted  = self.fastest_vm(task=task)
                     
                     if hosted :
-                        #print(f"Hosted, {task.id = }|{task.job_id = }")
                         self.task_queue.rotate(-_idx)
                         self.task_queue.popleft()
                         self.task_queue.rotate(_idx)
+                        task.scheduled = True
                         _idx = 0 
                     else :
                         _idx +=1
                 else :
-                    #print(f"waiting for data, {task.id = }|{task.job_id = }")
                     if task not in self.tasks_waiting_data :
                         self.tasks_waiting_data.append(task)
                     _idx +=1

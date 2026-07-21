@@ -36,6 +36,7 @@ class Task:
     self.job_sla = None
     self.job_arrival = None
     self.data_requested = False
+    self.scheduled = False
     
   
   def advance_timer(self, _t, time_step) :

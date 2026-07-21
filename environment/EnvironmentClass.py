@@ -40,7 +40,6 @@ class Environment:
         self.metrics_manager.set_name(self.scheduler.name)
         
         while self.is_running() :
-
             self.job_manager.pending_tasks = 0
             
             self.job_manager.update_arrival_jobs(t)
@@ -65,7 +64,7 @@ class Environment:
                 self.network_manager.resolve_routing()
             
             
-            
+            self.network_manager.distribute_data_payloads(t, self.time_step)
             
             t += self.time_step
         

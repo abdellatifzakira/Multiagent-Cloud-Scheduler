@@ -216,7 +216,7 @@ class Server_Farm:
         bandwidths = {}
         for i in range(len(server_list)):
             for j in range(i+1, len(server_list)):
-                    weight = np.random.randint(1024, 4096)
+                    weight = np.random.randint(4096, 16384)
                     bandwidths[(i, j)] = weight
         
         

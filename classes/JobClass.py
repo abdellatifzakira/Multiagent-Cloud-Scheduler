@@ -167,7 +167,7 @@ class Job:
         for job_id in range(num_jobs):
             
             # Random task parameters
-            cpu_req = [round(np.random.uniform(4, 32), 0) for _ in range(num_tasks_per_job)]
+            cpu_req = [round(np.random.uniform(12, 32), 0) for _ in range(num_tasks_per_job)]
             ram_req = [round(np.random.uniform(2, 32), 0) for _ in range(num_tasks_per_job)]
             instructions = [round(np.random.uniform(250e6,1e9), 0) for _ in range(num_tasks_per_job)]
             sizes = [round(np.random.uniform(32, 128), 0) for _ in range(num_tasks_per_job)]

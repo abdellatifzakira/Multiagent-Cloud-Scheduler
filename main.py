@@ -17,11 +17,11 @@ random.seed(global_seed)
 np.random.seed(global_seed)
 
 #WORKLOAD
-num_jobs = 9
+num_jobs = 360
 mean_job_gap = 0.01
 num_tasks_per_job = 5
 jobs_per_phase = num_jobs // 3
-edge_probability =  0.25 # controls how fuzzy the jobs are
+edge_probability =  0.05 # controls how fuzzy the jobs are
 
 # Light
 light_gap = np.ceil(
@@ -91,8 +91,9 @@ exp = Experiment(
                    LeastLoadedScheduler(mode='QUEUE', sorting='SLA'),
                    LeastLoadedScheduler(mode='CPU', sorting='SLA'),
                    DataLocalityAwareScheduler(),
-                   EnergyAwareScheduler()],
-    time_step = 0.01,
+                   EnergyAwareScheduler()
+                   ],
+    time_step = 0.1,
     network_manager = NetworkManager()
            )
 
