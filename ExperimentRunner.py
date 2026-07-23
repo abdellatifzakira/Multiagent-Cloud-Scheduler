@@ -29,9 +29,10 @@ class Experiment:
             self.network_overhead_enabled = network_overhead_enabled
             
             if not self.network_overhead_enabled :
-                print("Network communcation overhead is disabled\n"
+                print("\n[INFO] : Network communication overhead is disabled\n"
                       "The experiment is under the assumption of infinite bandwidth")
-        
+            else :
+                print("\n[INFO] : Network communication overhead is enabled\n")        
             
                 
         def build_environment(self):

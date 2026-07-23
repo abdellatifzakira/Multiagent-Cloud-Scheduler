@@ -135,6 +135,18 @@ class MetricsManager:
             for job in self.finished_jobs
             for task in job.tasks.values()
         ]
+        
+        data_transfer = sum(
+           [sum(list(job.data_transfer_weights.values())) for job in self.jobs.values()]
+        )
+        
+        sent_data = sum(
+                sum(data[0] for data in server.outgoing_data.values()) for server in self.servers
+        )
+        
+        saved_data = sum(
+                sum(data[0] for data in server.saved_data.values()) for server in self.servers
+        )
 
         states = Counter(
             task.status
@@ -158,8 +170,30 @@ class MetricsManager:
         print("\nDETAIL:")
         for status, count in states.items():
             print(f"STATUS {status}: {count}")
-
         print("="*50)
+            
+    def print_data_integrity_report(self):
+        
+        data_transfer = sum(
+           [sum(list(job.data_transfer_weights.values())) for job in self.jobs.values()]
+        )
+        
+        sent_data = sum(
+                sum(data[0] for data in server.outgoing_data.values()) for server in self.servers
+        )
+        
+        saved_data = sum(
+                sum(data[0] for data in server.saved_data.values()) for server in self.servers
+        )
+        
+        print("\nDATA INTEGRITY CHECK")
+        print(f"TOTAL DATA TRANSFER PARENT-TO-CHILD IN THE WORKLOAD : {data_transfer}")
+        print(f"TOTAL SAVED DATA : {saved_data}")
+        print(f"TOTAL SENT DATA : {sent_data}")
+        print(f"TOTAL EXCHNAGE DATA (SENT + SAVED) : {saved_data + sent_data}")
+        print(f"LOST DATA (DUE TO SIM ERROR) : {data_transfer - (saved_data + sent_data)}")
+        print("="*50)
+
         
         
         

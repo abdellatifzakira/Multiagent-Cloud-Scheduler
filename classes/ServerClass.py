@@ -81,6 +81,10 @@ class Server:
                           key[1].server is not None and
                           key[1].server != key[0].server }
         
+        for k, v in ready_payloads.items() :
+            self.outgoing_data[k] = v
+            self.saved_data.pop(k)
+        
         if ready_payloads:
             for value in ready_payloads.values():
                 value[2] = 1 # changing the status

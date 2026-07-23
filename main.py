@@ -95,7 +95,7 @@ exp = Experiment(
                             ],
                 time_step = 0.05,
                 network_manager = NetworkManager(),
-                network_overhead_enabled = False
+                network_overhead_enabled = True
                 )
 
 exp.build_environment()
