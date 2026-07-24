@@ -1,16 +1,14 @@
 import numpy as np
 import random
-import math
-class LeastLoadedScheduler:
+from templates.Scheduler import Scheduler
+class LeastLoadedScheduler(Scheduler):
     def __init__(self,
                  mode : str = 'CPU',
                  sorting : str = 'FIFO'
                  ):
-        self.server_farm = None
-        self.servers = None
+        super().__init__('LL' + '-' + mode)
         self.mode = mode
         self.sorting = sorting
-        self.name = 'LL' + ' - ' + mode
 
         
         assert mode in ['CPU', 'RAM', 'QUEUE', 'HYBRID'], "[INVALID MODE]\nAVAILABLE MODES : CPU | RAM | QUEUE | HYBRID "

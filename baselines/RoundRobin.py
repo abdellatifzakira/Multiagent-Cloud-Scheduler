@@ -1,12 +1,10 @@
 import numpy as np
+from templates.Scheduler import Scheduler
 
-class RoundRobinScheduler:
-    def __init__(self,
-                 ):
-        self.server_farm = None
-        self.servers = None
+class RoundRobinScheduler(Scheduler):
+    def __init__(self):
+        super().__init__("RR")
         self.pointer = 0
-        self.name = 'RR'
     
         
     def assign_tasks(self, ready_tasks, t):

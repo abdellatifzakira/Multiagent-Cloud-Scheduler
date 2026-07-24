@@ -1,14 +1,11 @@
-import numpy as np
-import random
-import math
+from templates.Scheduler import Scheduler
 
 
-class DataLocalityAwareScheduler:
+class DataLocalityAwareScheduler(Scheduler):
 
     def __init__(self):
-        self.server_farm = None
-        self.servers = None
-        self.name = 'DLAS'
+        super().__init__('DLAS')
+
 
 
     def get_best_pairs(self, tasks):

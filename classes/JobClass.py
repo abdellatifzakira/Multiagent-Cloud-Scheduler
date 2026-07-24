@@ -392,7 +392,7 @@ class Job:
     
     def get_critical_path_runtime(self):
         
-        _compute_power_refrence = 250e6 # 250_000_000 instruction/second a baseline : modest vm
+        _compute_power_refrence = 25e6 # 250_000_000 instruction/second a baseline : modest vm
 
         if self.dag is None:
             return max(

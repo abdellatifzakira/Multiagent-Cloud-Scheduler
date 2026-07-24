@@ -136,17 +136,6 @@ class MetricsManager:
             for task in job.tasks.values()
         ]
         
-        data_transfer = sum(
-           [sum(list(job.data_transfer_weights.values())) for job in self.jobs.values()]
-        )
-        
-        sent_data = sum(
-                sum(data[0] for data in server.outgoing_data.values()) for server in self.servers
-        )
-        
-        saved_data = sum(
-                sum(data[0] for data in server.saved_data.values()) for server in self.servers
-        )
 
         states = Counter(
             task.status
@@ -175,7 +164,7 @@ class MetricsManager:
     def print_data_integrity_report(self):
         
         data_transfer = sum(
-           [sum(list(job.data_transfer_weights.values())) for job in self.jobs.values()]
+           [sum(list(job.data_transfer_weights.values())) for job in self.jobs.values() if job.data_transfer_weights is not None]
         )
         
         sent_data = sum(

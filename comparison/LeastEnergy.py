@@ -1,15 +1,10 @@
-import numpy as np
 import random
-import math
+from templates.Scheduler import Scheduler
 
-
-class EnergyAwareScheduler:
+class EnergyAwareScheduler(Scheduler):
 
     def __init__(self):
-        self.server_farm = None
-        self.servers = None
-        self.name = 'EAS'
-
+        super().__init__('EAS')
     
         
     def get_best_server(self, task) :
@@ -17,6 +12,8 @@ class EnergyAwareScheduler:
         for s in self.servers.values():
             if s.first_check(task):
                 loads.append((s, s.expected_power_variation(task)))
+        if len(loads) <= 0:
+            return
         min_load = min(loads, key=lambda x: x[1])[1]
 
         # To prevent floating point errors
@@ -29,6 +26,8 @@ class EnergyAwareScheduler:
 
         for task in ready_tasks:
             server = self.get_best_server(task)
+            if server is None :
+                continue
             server.add_task_to_queue(
                 task,
                 t
