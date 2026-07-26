@@ -15,7 +15,9 @@ class RoundRobinScheduler(Scheduler):
                     "before all parents finished"
                 )
             server = self.servers[self.pointer]
-            success = server.add_task_to_queue(task, t)
+            success = False
+            if server.first_check(task):
+                success = server.add_task_to_queue(task, t)
             if success :
                 self.pointer = (self.pointer + 1) % n
 

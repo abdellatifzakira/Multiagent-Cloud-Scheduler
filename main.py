@@ -17,21 +17,21 @@ random.seed(global_seed)
 np.random.seed(global_seed)
 
 #WORKLOAD
-num_jobs = 300
-mean_job_gap = 0.1
+num_jobs = 150
+mean_job_gap = 0.02
 num_tasks_per_job = 5
 jobs_per_phase = num_jobs // 3
-edge_probability =  0.6 # controls how fuzzy the jobs are
+edge_probability =  0.75 # controls how fuzzy the jobs are
 
 # Light
 light_gap = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap*10, jobs_per_phase)])
 arrival_light = np.cumsum(light_gap)
 # Medium
 medium_gap = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap*4, jobs_per_phase)])
-arrival_medium = np.cumsum(medium_gap) + arrival_light[-1]
+arrival_medium = np.cumsum(medium_gap) + arrival_light[-1] 
 # Surge
-surge_gap = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap, jobs_per_phase)])
-arrival_surge = np.cumsum(surge_gap) + arrival_medium[-1]
+surge_gap = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap/2, jobs_per_phase)])
+arrival_surge = np.cumsum(surge_gap) + arrival_medium[-1] 
 
 arrival_times = np.concatenate([
     arrival_light,
@@ -56,22 +56,17 @@ print(f"ALL TASKS {len([tsk for job in jobs for tsk in job.tasks.values()])}")
 print(f"TASK STATES {set([tsk.status for job in jobs for tsk in job.tasks.values()])} : EXPECTED {1, 3}")
 print("===================================================")
 
-
-
-
-
-
 server_farm = Server_Farm().build_random_server_farms(
-    cpu_range = [256, 1024],
-    ram_range = [512, 4096],
+    cpu_range = [1024, 2048],
+    ram_range = [4096, 4096*4],
     storage_range = [4096, 20000],
-    compute_power_range= [1e9, 2e9],
-    max_vms_count = 2,
+    compute_power_range= [1e9, 3e9],
+    max_vms_count = 5,
     alphas = [100, 500],
     betas = [2, 5],
-    server_count = 3,
+    server_count = 5,
     virtual_allocation= [0.9, 0.95],
-    mode = 'SIMPLE'
+    mode = 'LEAST_LOADED'
 )
 
 plot_server_network(farm= server_farm)
@@ -82,12 +77,12 @@ exp = Experiment(
                 jobs  = jobs,
                 scenarios_edges = [min(arrival_medium), min(arrival_surge)],
                 schedulers  = [RoundRobinScheduler(),
-                            LeastLoadedScheduler(mode='QUEUE', sorting='SLA'),
-                            LeastLoadedScheduler(mode='CPU', sorting='SLA'),
+                            LeastLoadedScheduler(mode='QUEUE'),
+                            LeastLoadedScheduler(mode='CPU'),
                             DataLocalityAwareScheduler(),
                             EnergyAwareScheduler()
                             ],
-                time_step = 0.05,
+                time_step = 0.5,
                 network_manager = NetworkManager(),
                 network_overhead_enabled = True
                 )

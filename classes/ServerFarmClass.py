@@ -122,11 +122,11 @@ class Server_Farm:
                                 server_count = 3,
                                 power_price = 0.1,
                                 virtual_allocation = [0.85, 0.9],
-                                mode = 'SIMPLE'
+                                mode = 'ROUNDROBIN'
                                 ):
         
-        assert mode in ['SIMPLE', 'LEAST_LOADED', 'EXECUTION_TIME', 'COLLABORATIVE'], \
-            "[BAD INPUT] : AVAILABLE MODES SIMPLE | LEAST_LOADED | EXECUTION_TIME | COLLABORATIVE"
+        assert mode in ['ROUNDROBIN', 'LEAST_LOADED', 'EXECUTION_TIME', 'COLLABORATIVE'], \
+            "[BAD INPUT] : AVAILABLE MODES ROUNDROBIN | LEAST_LOADED | EXECUTION_TIME | COLLABORATIVE"
         
         assert server_count > 0, \
             "Invalid simulation parameter : server count must be > 1"
@@ -225,7 +225,7 @@ class Server_Farm:
         bandwidths = {}
         for i in range(len(server_list)):
             for j in range(i+1, len(server_list)):
-                    weight = np.random.randint(4096, 16384)
+                    weight = np.random.randint(1024*4, 4096*4)
                     bandwidths[(i, j)] = weight
         
         

@@ -13,7 +13,7 @@ class Job:
         time_arrived: float = None,
         data_transfer_weights: dict = None,
         id: int = None,
-        sla_factor= 2,
+        sla_factor= 1.25,
 
     ):
         if id is None:

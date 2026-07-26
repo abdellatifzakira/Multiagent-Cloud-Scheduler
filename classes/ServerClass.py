@@ -23,10 +23,10 @@ class Server:
         static_power: float = 130,
         optimal_utilization_rate: float = 0.75,
         virtualization_level : float = 0.9,
-        mode : str = 'EXECUTION_TIME',
+        mode : str = 'ROUNDROBIN',
     ):
-        assert mode in ['SIMPLE', 'LEAST_LOADED', 'EXECUTION_TIME', 'COLLABORATIVE'], \
-            "[BAD INPUT] : AVAILABLE MODES SIMPLE | LEAST_LOADED | EXECUTION_TIME | COLLABORATIVE"
+        assert mode in ['ROUNDROBIN', 'LEAST_LOADED', 'EXECUTION_TIME', 'COLLABORATIVE'], \
+            "[BAD INPUT] : AVAILABLE MODES ROUNDROBIN | LEAST_LOADED | EXECUTION_TIME | COLLABORATIVE"
         
         if id is None :
             self.id = Server._server_count
@@ -60,14 +60,16 @@ class Server:
         self.saved_data = {}
         
         self.network_enabled = None
+        self.index = 0
+        self.num_vms = 0
+        self.vm_id_list = list(self.vms.keys())
+
     
-    def request_data(self):
-        requested_data = []
-        for child in self.waiting_queue :
-            if not child.data_requested :
-                requested_data.append(child)
-                child.data_requested = True
-        return requested_data
+    def receive_data(self, duo, data):
+        try :
+            self.received_data[duo] += data
+        except KeyError :
+            self.received_data[duo] = data
             
             
     def save_data(self, task, t):
@@ -124,6 +126,7 @@ class Server:
         return {vm.id: vm for vm in vms}
 
     def spawn_vm(self, vm):
+        self.num_vms += 1
         vm.server = self
         self.vms[vm.id] = vm
         
@@ -138,6 +141,8 @@ class Server:
             vm_id = start_id + i
             new_vm = Vm(id=vm_id, c_cpu=cpu[i], c_ram=ram[i], compute_power=compute[i])
             self.spawn_vm(new_vm)
+        self.vm_id_list = list(self.vms.keys())
+        
         
     
     def is_available(self) -> bool:
@@ -146,16 +151,22 @@ class Server:
                 self.storage_utilization() < 1
                 )
     
-    def first_fit(self, task):
-        for vm in self.vms.values():
-            if vm.check_req_constraint(task):
-                if vm.host_task(task):
-                    self.hosted_tasks[task] = vm
-                    task.server = self
-                    task.vm = vm
-                    return True
-        return False
+    def roundrobin(self, task):
+        if not self.vm_id_list:
+            return False
+            
+        target_vm_id = self.vm_id_list[self.index]
+        vm = self.vms[target_vm_id]
         
+        if vm.check_req_constraint(task):
+            if vm.host_task(task):
+                self.hosted_tasks[task] = vm
+                task.server = self
+                task.vm = vm
+                self.index = (self.index + 1) % len(self.vm_id_list)
+                return True
+        return False
+
     def least_loaded(self, task):
         vms = sorted(
                     self.vms.items(),
@@ -199,54 +210,51 @@ class Server:
         
         
     def execute_tasks(self, t):
-        _idx = 0
+        if not self.task_queue:
+            return
+        unhosted_buffer = deque()
         while self.task_queue:
-            try :
-                task = self.task_queue[_idx]  # look at first task
-            except IndexError :
-                break
-            if task.status == 4 : # must be pending
-                if self.check_data_availability(task = task) and not task.scheduled:
-                    if  task.time_data_arrival  is None :
+            task = self.task_queue.popleft()
+            if task.status == 4:
+                if self.check_data_availability(task) and not task.scheduled:
+                    if task.time_data_arrival is None:
                         task.time_data_arrival = t
-                    match self.mode :
-                        case 'SIMPLE' :
-                            hosted  = self.first_fit(task=task)
-                        case 'LEAST_LOADED' :
-                            hosted  = self.least_loaded(task=task)
-                        case 'EXECUTION_TIME' :
-                            hosted  = self.fastest_vm(task=task)
+                        
+                    hosted = False
+                    if self.mode == 'ROUNDROBIN':
+                        hosted = self.roundrobin(task)
+                    elif self.mode == 'LEAST_LOADED':
+                        hosted = self.least_loaded(task)
+                    elif self.mode == 'EXECUTION_TIME':
+                        hosted = self.fastest_vm(task)
                     
-                    if hosted :
-                        self.task_queue.rotate(-_idx)
-                        self.task_queue.popleft()
-                        self.task_queue.rotate(_idx)
+                    if hosted:
                         task.scheduled = True
-                        _idx = 0 
-                    else :
-                        _idx +=1
-                else :
-                    if task not in self.tasks_waiting_data :
+                    else:
+                        unhosted_buffer.append(task)
+                else:
+                    if not self.check_data_availability(task) and task not in self.tasks_waiting_data:
                         self.tasks_waiting_data.append(task)
-                    _idx +=1
+                    unhosted_buffer.append(task)
             else:
-                self.task_queue.popleft()
+                pass
+
+        # Push delayed allocations back to the main active queue
+        self.task_queue = unhosted_buffer
         
     def add_task_to_queue(self,task, t) :
-        if task.size + self.get_storage_usage() <= self.storage :
-            task.status = 4 # waiting in the queue
-            self.task_queue.append(task)
-            task.server = self
-            task.start_time = t
-            return True
-        return False
+        task.status = 4 # waiting in the queue
+        self.task_queue.append(task)
+        task.server = self
+        task.start_time = t
+        return True
 
     def first_check(self, task) :
-        return (task.size + self.get_storage_usage() <= self.storage)
-    
-    def release_task_from_server(self, task):
-        return self.hosted_tasks[task].release_task()
-    
+        verdict = ((task.size + self.get_storage_usage() <= self.storage) and
+                   (task.cpu <= max([vm.cpu for vm in self.vms.values()])) and
+                   (task.ram <= max([vm.ram for vm in self.vms.values()])))
+        return verdict
+
     
     def cpu_utilization(self):
         return np.sum(vm.used_cpu for vm in self.vms.values())/self.c_cpu

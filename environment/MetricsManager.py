@@ -168,21 +168,26 @@ class MetricsManager:
         )
         
         sent_data = sum(
-                sum(data[0] for data in server.outgoing_data.values()) for server in self.servers
+                [sum(data[0] for data in server.outgoing_data.values()) for server in self.servers]
         )
         
+        received_data = sum(
+                        [sum(data for data in server.received_data.values()) for server in self.servers]
+                )
+        
         saved_data = sum(
-                sum(data[0] for data in server.saved_data.values()) for server in self.servers
+                [sum(data[0] for data in server.saved_data.values()) for server in self.servers]
         )
         
         print("\nDATA INTEGRITY CHECK")
         print(f"TOTAL DATA TRANSFER PARENT-TO-CHILD IN THE WORKLOAD : {data_transfer}")
         print(f"TOTAL SAVED DATA : {saved_data}")
         print(f"TOTAL SENT DATA : {sent_data}")
+        print(f"TOTAL RECEIVED DATA : {received_data}")
         print(f"TOTAL EXCHNAGE DATA (SENT + SAVED) : {saved_data + sent_data}")
-        print(f"LOST DATA (DUE TO SIM ERROR) : {data_transfer - (saved_data + sent_data)}")
-        print("="*50)
-
+        print(f">> LOST DATA (DUE TO SIM ERROR) : {data_transfer - (saved_data + sent_data)}")
+        print(f"TOTAL EXCHNAGE DATA (RECEIVED + SAVED) : {saved_data + received_data}")
+        print(f">> LOST DATA (DUE TO SIM ERROR) : {data_transfer - (saved_data + received_data)}")
         
         
         

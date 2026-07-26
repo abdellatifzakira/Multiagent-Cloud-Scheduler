@@ -1,5 +1,5 @@
 import numpy as np
-
+import time
 class JobManager:
 
     def __init__(self, jobs: list):
@@ -13,23 +13,25 @@ class JobManager:
         self.running_tasks = []
         self.pending_tasks = 0
         self.finished_jobs = []
+        self.index = 0
 
 
 
     def update_arrival_jobs(self, t):
-
         out_jobs = []
-
-        for job in self.jobs:
-            if job.time_arrived <= t and not job.counted:
-                job.counted = True
-                out_jobs.append(job)
+        while self.jobs[self.index] and self.jobs[self.index].time_arrived <= t and self.workload:
+                self.jobs[self.index].counted = True
+                out_jobs.append(self.jobs[self.index])
+                self.workload_size -= 1
+                if self.workload_size <= 0:
+                    self.workload = False
+                    break
+                self.index +=1
 
         self.arrived_jobs.extend(out_jobs)
-        self.workload_size -= len(out_jobs)
+       
 
-        if self.workload_size <= 0:
-            self.workload = False
+
 
 
 

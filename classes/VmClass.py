@@ -18,7 +18,7 @@ class Vm:
         self.used_cpu = 0.0
         self.used_ram = 0.0
         
-        self.max_concurrent_tasks = 25
+        self.max_concurrent_tasks = 250
         self.completed_tasks = 0
         
 
@@ -77,12 +77,6 @@ class Vm:
         task.end_time = t
         task.status = 0
 
-        
-        """
-        print("task finished", task.id, task.job_id)
-        for child in task.children:
-            print("child ready", child.id, child.job_id)
-        """
         if self.server.network_enabled:
             self.server.save_data(task, t)
 
