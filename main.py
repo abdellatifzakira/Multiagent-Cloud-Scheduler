@@ -18,7 +18,7 @@ np.random.seed(global_seed)
 
 #WORKLOAD
 num_jobs = 150
-mean_job_gap = 0.02
+mean_job_gap = 0.025
 num_tasks_per_job = 5
 jobs_per_phase = num_jobs // 3
 edge_probability =  0.75 # controls how fuzzy the jobs are
@@ -30,7 +30,7 @@ arrival_light = np.cumsum(light_gap)
 medium_gap = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap*4, jobs_per_phase)])
 arrival_medium = np.cumsum(medium_gap) + arrival_light[-1] 
 # Surge
-surge_gap = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap/2, jobs_per_phase)])
+surge_gap = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap, jobs_per_phase)])
 arrival_surge = np.cumsum(surge_gap) + arrival_medium[-1] 
 
 arrival_times = np.concatenate([
@@ -66,7 +66,7 @@ server_farm = Server_Farm().build_random_server_farms(
     betas = [2, 5],
     server_count = 5,
     virtual_allocation= [0.9, 0.95],
-    mode = 'LEAST_LOADED'
+    mode = 'ROUNDROBIN'
 )
 
 plot_server_network(farm= server_farm)
@@ -79,10 +79,11 @@ exp = Experiment(
                 schedulers  = [RoundRobinScheduler(),
                             LeastLoadedScheduler(mode='QUEUE'),
                             LeastLoadedScheduler(mode='CPU'),
-                            DataLocalityAwareScheduler(),
+                            DataLocalityAwareScheduler(mode='HYBRID'),
+                            DataLocalityAwareScheduler(mode='NAIVE'),
                             EnergyAwareScheduler()
                             ],
-                time_step = 0.5,
+                time_step = 0.1,
                 network_manager = NetworkManager(),
                 network_overhead_enabled = True
                 )

@@ -154,7 +154,18 @@ class Server:
     def roundrobin(self, task):
         if not self.vm_id_list:
             return False
-            
+        # for single queued tasks run first fit to prevent infinite loops
+        if len(self.task_queue) == 1:
+            for vm in self.vms.values():
+                if vm.check_req_constraint(task):
+                    if vm.host_task(task):
+                        self.hosted_tasks[task] = vm
+                        task.server = self
+                        task.vm = vm
+                        #self.index = (self.index + 1) % len(self.vm_id_list)
+                        return True
+                
+        # for multiple tasks run roundrobin
         target_vm_id = self.vm_id_list[self.index]
         vm = self.vms[target_vm_id]
         
