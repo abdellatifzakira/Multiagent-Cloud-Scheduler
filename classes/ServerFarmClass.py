@@ -38,6 +38,7 @@ class Server_Farm:
         self.bandwidths = {}
         
         self.communication_enabled = None
+        self.power_model = 'DEFAULT'
         
         
         
@@ -62,6 +63,9 @@ class Server_Farm:
     
     def get_power_price(self):
         return sum(server.get_power_consumption() for server in self.servers.values())*self.power_price
+    
+    def get_power(self):
+            return sum(server.get_power_consumption() for server in self.servers.values())
     
     # Naive first in list first served at first to be enhanced later on
     def host_task_in_farm(self, task):
@@ -239,7 +243,13 @@ class Server_Farm:
         
         farm.graph = farm.build_graph(bandwidths = bandwidths)
         return farm
-                    
+    
+    ##################################
+    def set_power_model(self, model):
+        self.power_model = model
+        for server in self.servers.values():
+            server.set_power_model(model)
+    ###################################                
     
     def reset(self):
         for server in self.servers.values() :

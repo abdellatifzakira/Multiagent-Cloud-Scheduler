@@ -14,13 +14,20 @@ class Experiment:
                      time_step = 0.01,
                      network_manager = None,
                      network_overhead_enabled = False,
+                     power_model = 'DEFAULT'
                 ):
+            """
+            For the power model use these symbols while writing the equations :
+            CPU, RAM, STORAGE
+            """
+            
             self.infrastructure = infrastructure
             self.jobs = jobs
             self.scenarios_edges = scenarios_edges
             self.schedulers = schedulers
             self.time_step = time_step
             self.network_manager = network_manager
+            self.power_model = power_model
             
             self.environments = {}
             
@@ -40,6 +47,8 @@ class Experiment:
             for scheduler in self.schedulers :
 
                 farm = copy.deepcopy(self.infrastructure)
+                
+                farm.set_power_model(self.power_model)
 
                 job_copy = copy.deepcopy(self.jobs)
 

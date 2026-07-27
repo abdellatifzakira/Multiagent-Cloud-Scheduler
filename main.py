@@ -17,7 +17,7 @@ random.seed(global_seed)
 np.random.seed(global_seed)
 
 #WORKLOAD
-num_jobs = 150
+num_jobs = 30
 mean_job_gap = 0.025
 num_tasks_per_job = 5
 jobs_per_phase = num_jobs // 3
@@ -64,12 +64,12 @@ server_farm = Server_Farm().build_random_server_farms(
     max_vms_count = 5,
     alphas = [100, 500],
     betas = [2, 5],
-    server_count = 5,
+    server_count = 3,
     virtual_allocation= [0.9, 0.95],
     mode = 'ROUNDROBIN'
 )
 
-plot_server_network(farm= server_farm)
+#plot_server_network(farm= server_farm)
 
 
 exp = Experiment(
@@ -77,15 +77,17 @@ exp = Experiment(
                 jobs  = jobs,
                 scenarios_edges = [min(arrival_medium), min(arrival_surge)],
                 schedulers  = [RoundRobinScheduler(),
-                            LeastLoadedScheduler(mode='QUEUE'),
-                            LeastLoadedScheduler(mode='CPU'),
-                            DataLocalityAwareScheduler(mode='HYBRID'),
-                            DataLocalityAwareScheduler(mode='NAIVE'),
-                            EnergyAwareScheduler()
+                            #LeastLoadedScheduler(mode='QUEUE'),
+                            #LeastLoadedScheduler(mode='CPU'),
+                            #DataLocalityAwareScheduler(mode='HYBRID'),
+                            #DataLocalityAwareScheduler(mode='NAIVE'),
+                            #EnergyAwareScheduler()
                             ],
                 time_step = 0.1,
                 network_manager = NetworkManager(),
-                network_overhead_enabled = True
+                network_overhead_enabled = True,
+                power_model='DEFAULT'
+                
                 )
 
 exp.build_environment()

@@ -1,5 +1,6 @@
 import numpy as np
 from collections import Counter
+from utilities.helpers import parse_power_equation
 class MetricsManager:
     def __init__(self,
                  server_farm = None,
@@ -21,11 +22,13 @@ class MetricsManager:
         self.results = {}
         self.results['NAME'] = None
         self.results['TIMELINE'] = []
-        self.results['CPU'] = {s  : [] for s in self.server_farm.servers.values()}
+        self.results['CPU'] = {s  : [] for s in self.server_farm.servers.values()} # denotes the virtual cpu allocation
+        self.results['CPU_GLOBAL'] = {s  : [] for s in self.server_farm.servers.values()} # denotes the real server cpu usage
         self.results['RAM'] =  {s  : [] for s in self.server_farm.servers.values()}
         self.results['STORAGE'] =  {s  : [] for s in self.server_farm.servers.values()}
         self.results['CPU_STD'] = []
         self.results['POWER_PRICE'] = []
+        self.results['POWER'] = []
         self.results['DATA_TRANSFER'] = []
         self.results['CUM_DATA_TRANSFER'] = []
         self.results['SLA'] = []
@@ -90,12 +93,14 @@ class MetricsManager:
         self.results['TIMELINE'].append(t)
         for server in self.server_farm.servers.values() :
                 self.results['CPU'][server].append(server.virtual_cpu_efficiency())
+                self.results['CPU_GLOBAL'][server].append(server.cpu_utilization())
                 self.results['RAM'][server].append(server.ram_utilization())
                 self.results['STORAGE'][server].append(server.storage_utilization())
 
             
             
         self.results['POWER_PRICE'].append(self.server_farm.get_power_price())
+        self.results['POWER'].append(self.server_farm.get_power())
         self.results['DATA_TRANSFER'].append(self.monitor_data_transfer())
         self.results['CUM_DATA_TRANSFER'] = np.cumsum(self.results['DATA_TRANSFER'])
         self.results['SLA'].append(self.get_sla_violation_rate())
@@ -120,6 +125,7 @@ class MetricsManager:
         print(f"MEAN COMPLETION TIME : {mean_completion_time}")
         print(f"95TH PERCENTILE : {percentile_95}")
         print(f"POWER PRICE : MEAN = {np.mean(self.results['POWER_PRICE'])}, RANGE = {np.max(self.results['POWER_PRICE']), np.min(self.results['POWER_PRICE'])}, STD : {np.std(self.results['POWER_PRICE'])} " )
+        print(f"POWER CONSUMPTION : MEAN = {np.mean(self.results['POWER'])}, RANGE = {np.max(self.results['POWER']), np.min(self.results['POWER'])}, STD : {np.std(self.results['POWER'])} " )
         print(f"DATA TRANSFER : MEAN = {np.mean(self.results['DATA_TRANSFER'])}, RANGE = {np.max(self.results['DATA_TRANSFER']), np.min(self.results['DATA_TRANSFER'])}" )
         print(f"CUM DATA TRANSFER : RANGE = {np.max(self.results['CUM_DATA_TRANSFER']), np.min(self.results['CUM_DATA_TRANSFER'])}" )
         print(f"CPU STD : MEAN = {np.mean(self.results['CPU_STD'])}, RANGE = {np.max(self.results['CPU_STD']), np.min(self.results['CPU_STD'])}" )
@@ -190,7 +196,22 @@ class MetricsManager:
         print(f">> LOST DATA (DUE TO SIM ERROR) : {data_transfer - (saved_data + received_data)}")
         
         
-        
+    def print_power_model_integrity_check(self):
+        print("="*50)
+        print("POWER MODEL INTEGRITY CHECK")
+        print(f"POWER = {self.server_farm.power_model}")
+        computed_power = np.array([ 0.0 for i in range(len(self.results['POWER']))])
+        for server in self.servers:
+            func = parse_power_equation(server.power_model)
+            CPU = self.results['CPU_GLOBAL'][server]
+            RAM = self.results['RAM'][server]
+            STORAGE = self.results['STORAGE'][server]
+            computed_power = computed_power + np.array([func(CPU[i], RAM[i], STORAGE[i]) for i in range(len(CPU))])
+        actual_power = np.array(self.results['POWER'])
+        print("FINAL SIMULATION ERROR LOG :")
+        print("COMPUTED POWER - ACTUAL POWER : ")
+        print(f"MIN ERROR : {min(computed_power - actual_power)}")
+        print(f"MAX ERROR : {max(computed_power - actual_power)}")
         
     def print_infrastructure_details(self):
         print("<==== INFRASTRUCTURE INSIGHT : ====>")
@@ -208,4 +229,9 @@ class MetricsManager:
                 print(f"=========> VM COMPUTE POWER : {vm.compute_power}")
                 print(f"=========> COMPLETED TASKS : {vm.completed_tasks}")
             print(f"TOTAL TASKS RUN ON THE SERVER {s.id} : {sum(vm.completed_tasks for vm in s.vms.values())}")
+        if self.server_farm.power_model != 'DEFAULT' :
+            self.print_power_model_integrity_check()
+            
+    
+
 

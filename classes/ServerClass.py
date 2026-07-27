@@ -5,6 +5,8 @@ try :
 except ModuleNotFoundError: 
     from VmClass import Vm
     
+from utilities.helpers import parse_power_equation
+    
 
 
 class Server:
@@ -63,6 +65,12 @@ class Server:
         self.index = 0
         self.num_vms = 0
         self.vm_id_list = list(self.vms.keys())
+        
+        self.power_model = 'DEFAULT'
+        
+    
+    def set_power_model(self, model):
+        self.power_model = model
 
     
     def receive_data(self, duo, data):
@@ -282,8 +290,16 @@ class Server:
     
     
     def get_power_consumption(self):
-        cpu_utilization = self.cpu_utilization()
-        return  round((cpu_utilization**self.beta)*self.alpha + self.static_power, ndigits=3)
+        if self.power_model == 'DEFAULT' :
+            cpu_utilization = self.cpu_utilization()
+            return  round((cpu_utilization**self.beta)*self.alpha + self.static_power, ndigits=3)
+        else :
+            function = parse_power_equation(self.power_model)
+            CPU = self.cpu_utilization()
+            RAM = self.ram_utilization()
+            STORAGE = self.storage_utilization()
+            return function(CPU, RAM, STORAGE)
+            
     
     
     """
