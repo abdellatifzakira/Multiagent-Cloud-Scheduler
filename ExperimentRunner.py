@@ -37,7 +37,7 @@ class Experiment:
             
             if not self.network_overhead_enabled :
                 print("\n[INFO] : Network communication overhead is disabled\n"
-                      "The experiment is under the assumption of infinite bandwidth")
+                      "The experiment is under the assumption of infinite bandwidth\n")
             else :
                 print("\n[INFO] : Network communication overhead is enabled\n")        
             

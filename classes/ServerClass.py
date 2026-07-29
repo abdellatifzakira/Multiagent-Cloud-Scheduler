@@ -67,11 +67,14 @@ class Server:
         self.vm_id_list = list(self.vms.keys())
         
         self.power_model = 'DEFAULT'
+        self.power_function = None
+        
         
     
     def set_power_model(self, model):
         self.power_model = model
-
+        if model != 'DEFAULT' :
+            self.power_function = parse_power_equation(self.power_model)
     
     def receive_data(self, duo, data):
         try :
@@ -110,6 +113,7 @@ class Server:
         
     
     def check_data_availability(self, task):
+        epsilon = 1e-9
         if not self.network_enabled:
             return True
         required_data = task.parent_weights
@@ -120,7 +124,8 @@ class Server:
                 total_received_data = self.received_data[(parent, task)]
             if (parent, task) in self.saved_data.keys() :
                 saved_data = self.saved_data[(parent, task)][0]
-            not_received = (total_received_data + saved_data < required_data[parent])
+            # adding epsilon to count for floating point errors
+            not_received = (total_received_data + saved_data + epsilon < required_data[parent])
             if not_received :
                     return False
         return True
@@ -170,7 +175,6 @@ class Server:
                         self.hosted_tasks[task] = vm
                         task.server = self
                         task.vm = vm
-                        #self.index = (self.index + 1) % len(self.vm_id_list)
                         return True
                 
         # for multiple tasks run roundrobin
@@ -204,11 +208,20 @@ class Server:
     
     
     def fastest_vm(self, task):
+        # for single queued tasks run first fit to prevent infinite loops
+        if len(self.task_queue) == 1:
+            for vm in self.vms.values():
+                if vm.check_req_constraint(task):
+                    if vm.host_task(task):
+                        self.hosted_tasks[task] = vm
+                        task.server = self
+                        task.vm = vm
+                        return True
         def get_expected_latency(vm):
             _vm = vm[1]
             _all_instructions = sum(
-                tsk.remaining_instructions
-                for tsk in _vm.hosted_task.keys()
+                [tsk.remaining_instructions
+                for tsk in _vm.hosted_task.keys()]
             )
             
             return _all_instructions/_vm.compute_power
@@ -234,8 +247,8 @@ class Server:
         unhosted_buffer = deque()
         while self.task_queue:
             task = self.task_queue.popleft()
-            if task.status == 4:
-                if self.check_data_availability(task) and not task.scheduled:
+            if task.status == 4 and not task.scheduled:
+                if self.check_data_availability(task) : 
                     if task.time_data_arrival is None:
                         task.time_data_arrival = t
                         
@@ -252,8 +265,6 @@ class Server:
                     else:
                         unhosted_buffer.append(task)
                 else:
-                    if not self.check_data_availability(task) and task not in self.tasks_waiting_data:
-                        self.tasks_waiting_data.append(task)
                     unhosted_buffer.append(task)
             else:
                 pass
@@ -294,30 +305,37 @@ class Server:
             cpu_utilization = self.cpu_utilization()
             return  round((cpu_utilization**self.beta)*self.alpha + self.static_power, ndigits=3)
         else :
-            function = parse_power_equation(self.power_model)
             CPU = self.cpu_utilization()
             RAM = self.ram_utilization()
             STORAGE = self.storage_utilization()
-            return function(CPU, RAM, STORAGE)
+            return self.power_function(CPU, RAM, STORAGE) + self.static_power
             
     
     
-    """
-    >> the new energy consumption after a cpu variation of "e" assuming "e" is minimal "e<<cpu"
-    >> E(cpu + e) = E(cpu) + e * dE/dcpu (cpu)
-    >> E(cpu + e) = E(cpu) + e * alpha * beta * (cpu^(beta -1))
-    >> the marginal power consumption : e * alpha * beta * (cpu^(beta -1))
-    """
     def get_cpu_usage_variation(self, dcpu):
-        "get the cpu percentage variation caused by a task requirement cpu"
+        "get the cpu percentage variation caused by a task required cpu"
         return dcpu/self.c_cpu
+    
+    def get_ram_usage_variation(self, dram):
+            "get the ram percentage variation caused by a task required ram"
+            return dram/self.c_ram
+    
+    def get_storage_usage_variation(self, dstorage):
+            "get the storage percentage variation caused by a task required storage"
+            return dstorage/self.storage
     
     def expected_power_variation(self, task) :
         dcpu = self.get_cpu_usage_variation(task.cpu)
-        expected_power = dcpu * self.alpha * self.beta * (self.cpu_utilization()**(self.beta -1))
-        
-        return self.get_power_consumption() + expected_power
-    
+        dram = self.get_ram_usage_variation(task.ram)
+        dstorage = self.get_storage_usage_variation(task.size)
+        if self.power_model == 'DEFAULT' :
+            expected_cpu_utilization = self.cpu_utilization() + dcpu
+            return  round((expected_cpu_utilization**self.beta)*self.alpha + self.static_power, ndigits=3)
+        else :
+            CPU = self.cpu_utilization() + dcpu
+            RAM = self.ram_utilization() + dram
+            STORAGE = self.storage_utilization() + dstorage
+            return self.power_function(CPU, RAM, STORAGE) + self.static_power
 
     
     
