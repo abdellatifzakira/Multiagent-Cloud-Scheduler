@@ -91,5 +91,8 @@ exp = Experiment(
                 )
 
 exp.build_environment()
+import time
+t = time.time()
 exp.run_experiment()
+print(f"EXPERIMENT RAN FOR {time.time() - t}s")
 exp.plot_results()

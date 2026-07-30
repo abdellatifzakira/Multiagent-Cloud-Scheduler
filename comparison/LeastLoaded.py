@@ -6,7 +6,7 @@ class LeastLoadedScheduler(Scheduler):
                  mode : str = 'CPU',
                  sorting : str = 'FIFO'
                  ):
-        super().__init__('LL' + '-' + mode)
+        super().__init__('LL' + '-' + mode, 'Least Loaded Scheduler : mode ' + mode + '| sorting ' + sorting)
         self.mode = mode
         self.sorting = sorting
 
@@ -28,7 +28,7 @@ class LeastLoadedScheduler(Scheduler):
                 )
             case 'SLA' :
                 ready_tasks.sort(
-                    key=lambda task: task.job_sla - (current_time - task.job_arrival) - task.num_instructions/250e6
+                    key=lambda task: task.job_sla - (current_time - task.job_arrival) - task.num_instructions/25e6
                 )
                 
                 
@@ -66,11 +66,11 @@ class LeastLoadedScheduler(Scheduler):
 
             vm_finish_times.append(vm_time)
 
+        # when the first slot becomes available
+        execution_delay = max(vm_finish_times)
 
-        execution_delay = max(vm_finish_times, default=0)
-
-
-        return queue_delay + execution_delay
+        # weights to be tuned
+        return 0.75*queue_delay + 0.25*execution_delay
     
     def get_least_busy_server(self):
         servers = list(self.server_farm.servers.values())
@@ -142,7 +142,7 @@ class LeastLoadedScheduler(Scheduler):
         candidates = [ s for s, l in loads
                     if abs(l - min_load) < 1e-9 ]
 
-        return random.choice(candidates)
+        return self.rng.choice(candidates)
         
         
         

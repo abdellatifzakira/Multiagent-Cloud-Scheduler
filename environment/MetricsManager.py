@@ -119,18 +119,18 @@ class MetricsManager:
                                             for job in self.finished_jobs
                                         ]
                                     )
+        makespan = max(job.end_time for job in self.finished_jobs) - min(job.time_arrived for job in self.finished_jobs)
         mean_completion_time = np.mean(completion_time)
         percentile_95 = np.percentile(completion_time, 95)
-         
-        print(f"MEAN COMPLETION TIME : {mean_completion_time}")
-        print(f"95TH PERCENTILE : {percentile_95}")
-        print(f"POWER PRICE : MEAN = {np.mean(self.results['POWER_PRICE'])}, RANGE = {np.max(self.results['POWER_PRICE']), np.min(self.results['POWER_PRICE'])}, STD : {np.std(self.results['POWER_PRICE'])} " )
-        print(f"POWER CONSUMPTION : MEAN = {np.mean(self.results['POWER'])}, RANGE = {np.max(self.results['POWER']), np.min(self.results['POWER'])}, STD : {np.std(self.results['POWER'])} " )
-        print(f"DATA TRANSFER : MEAN = {np.mean(self.results['DATA_TRANSFER'])}, RANGE = {np.max(self.results['DATA_TRANSFER']), np.min(self.results['DATA_TRANSFER'])}" )
-        print(f"CUM DATA TRANSFER : RANGE = {np.max(self.results['CUM_DATA_TRANSFER']), np.min(self.results['CUM_DATA_TRANSFER'])}" )
-        print(f"CPU STD : MEAN = {np.mean(self.results['CPU_STD'])}, RANGE = {np.max(self.results['CPU_STD']), np.min(self.results['CPU_STD'])}" )
+        print(f"MEAN COMPLETION TIME : {round(mean_completion_time, ndigits=3)}")
+        print(f"95TH PERCENTILE : {round(percentile_95, ndigits=3)}")
+        print(f"POWER PRICE : MEAN = {round(float(np.mean(self.results['POWER_PRICE'])), ndigits=3)}, RANGE = {round(float(np.min(self.results['POWER_PRICE'])), ndigits=3), round(float(np.max(self.results['POWER_PRICE'])), ndigits=3)}, STD : {round(float(np.std(self.results['POWER_PRICE'])), ndigits=3)} " )
+        print(f"POWER CONSUMPTION : MEAN = {round(float(np.mean(self.results['POWER'])), ndigits=3)}, RANGE = {round(float(np.min(self.results['POWER'])), ndigits=3), round(float(np.max(self.results['POWER'])), ndigits=3)}, STD : {round(float(np.std(self.results['POWER'])), ndigits=3)} " )
+        print(f"CUM DATA TRANSFER : {round(float(np.max(self.results['CUM_DATA_TRANSFER'])), ndigits=3)}" )
+        print(f"CPU STD : MEAN = {round(float(np.mean(self.results['CPU_STD'])), ndigits=3)}, RANGE = {round(float(np.min(self.results['CPU_STD'])), ndigits=3), round(float(np.max(self.results['CPU_STD'])),ndigits=3)}" )
         print(f"FINAL SLA VIOLATION RATE (IN JOB COUNT) : {max(self.results['SLA'])}/{len(self.finished_jobs)}")
-        print(f"FINAL NETWORK LATENCY : {max(self.results['NETWORK_LATENCY'])}")
+        print(f"FINAL NETWORK LATENCY : {round(float(max(self.results['NETWORK_LATENCY'])), ndigits=3)}")
+        print(f"FINAL MAKE SPAN : {round(makespan, ndigits=3)}")
         print(f"TIMELINE LENGTH : {len(self.results['TIMELINE'])}")
     
     
@@ -199,14 +199,13 @@ class MetricsManager:
     def print_power_model_integrity_check(self):
         print("="*50)
         print("POWER MODEL INTEGRITY CHECK")
-        print(f"POWER = {self.server_farm.power_model}")
+        print(f"DYNAMIC POWER MODEL = {self.server_farm.power_model}")
         computed_power = np.array([ 0.0 for i in range(len(self.results['POWER']))])
         for server in self.servers:
-            func = parse_power_equation(server.power_model)
             CPU = self.results['CPU_GLOBAL'][server]
             RAM = self.results['RAM'][server]
             STORAGE = self.results['STORAGE'][server]
-            computed_power = computed_power + np.array([func(CPU[i], RAM[i], STORAGE[i]) for i in range(len(CPU))])
+            computed_power = computed_power + np.array([server.power_function(CPU[i], RAM[i], STORAGE[i]) + server.static_power for i in range(len(CPU))])
         actual_power = np.array(self.results['POWER'])
         print("FINAL SIMULATION ERROR LOG :")
         print("COMPUTED POWER - ACTUAL POWER : ")

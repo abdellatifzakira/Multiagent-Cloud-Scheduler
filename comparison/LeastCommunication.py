@@ -4,7 +4,7 @@ from templates.Scheduler import Scheduler
 class DataLocalityAwareScheduler(Scheduler):
 
     def __init__(self, mode = 'NAIVE'):
-        super().__init__('DLAS' + '-' +mode)
+        super().__init__('DLAS' + '-' +mode, 'Data Locality Aware Scheduler : mode ' + mode)
         self.mode = mode
         assert mode in ['NAIVE', 'HYBRID'],\
             "[BAD INPUT] AVAILABLE MODES : NAIVE | HYBRID"

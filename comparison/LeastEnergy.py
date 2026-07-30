@@ -4,7 +4,7 @@ from templates.Scheduler import Scheduler
 class EnergyAwareScheduler(Scheduler):
 
     def __init__(self):
-        super().__init__('EAS')
+        super().__init__('EAS', 'Energy aware scheduler')
     
         
     def get_best_server(self, task) :
@@ -20,7 +20,7 @@ class EnergyAwareScheduler(Scheduler):
         candidates = [ s for s, l in loads
                     if abs(l - min_load) < 1e-9 ]
 
-        return random.choice(candidates)
+        return self.rng.choice(candidates)
 
     def assign_tasks(self, ready_tasks, t):
 

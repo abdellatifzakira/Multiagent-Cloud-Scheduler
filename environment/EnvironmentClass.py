@@ -78,12 +78,13 @@ class Environment:
         
         
         print("==================================================")
-        print("SUMMARY RUN FOR SCHEDULER : ", self.scheduler.name)
+        print("SUMMARY RUN FOR SCHEDULER : ")
+        print(self.scheduler.full_name)
         print("==================================================")
         
         self.metrics_manager.print_experience_summary()
-        #self.metrics_manager.print_after_run_check()
-        #self.metrics_manager.print_infrastructure_details()
+        self.metrics_manager.print_after_run_check()
+        self.metrics_manager.print_infrastructure_details()
         
         if self.network_overhead :
             self.metrics_manager.print_data_integrity_report()

@@ -51,6 +51,8 @@ class Experiment:
                 farm.set_power_model(self.power_model)
 
                 job_copy = copy.deepcopy(self.jobs)
+                
+                network = copy.deepcopy(self.network_manager)
 
                 self.environments[scheduler] = Environment(
                                                         server_farm=farm,
@@ -63,7 +65,7 @@ class Experiment:
                                                         ),
                                                         scheduler=scheduler,
                                                         time_step=self.time_step,
-                                                        network_manager = self.network_manager,
+                                                        network_manager =  network,
                                                         network_overhead = self.network_overhead_enabled
                                                     )
         
