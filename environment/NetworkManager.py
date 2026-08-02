@@ -3,7 +3,7 @@ import numpy as np
 class NetworkManager:
     def __init__(self, server_farm = None):
         self.server_farm = server_farm
-        self.servers = self.server_farm.servers.values() in server_farm if server_farm is not None else None
+        self.servers = self.server_farm.servers.values() if server_farm is not None else None
         
         self.data_packets = {}
         

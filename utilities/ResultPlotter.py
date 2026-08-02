@@ -96,14 +96,21 @@ def plot_metrics(results_list,
                     y,
                     num_bins
                 )
-
-
-            ax.plot(
-                t,
-                y,
-                linewidth=2,
-                label=res["NAME"] + ' : ' + f'{round(np.mean(y), ndigits=2)}'
-            )
+            
+            if metric=="POWER_PRICE":
+                ax.plot(
+                    t,
+                    y,
+                    linewidth=2,
+                    label=res["NAME"] + ' : ' + f'{round(np.mean(y), ndigits=2)}'
+                )
+            else :
+                ax.plot(
+                        t,
+                        y,
+                        linewidth=2,
+                        label=res["NAME"]
+                                )
 
 
         ax.set_title(title)

@@ -15,6 +15,7 @@ class Environment:
         self.metrics_manager = metrics_manager
         self.scheduler = scheduler
         self.time_step = time_step
+        self.time_step_backup = time_step
         self.scheduler.server_farm = self.server_farm
         self.scheduler.servers = self.server_farm.servers
         self.network_manager = network_manager
@@ -24,6 +25,8 @@ class Environment:
         self.server_farm.set_communication_mode()
         
         network_manager.server_farm = server_farm
+        
+        self.hosting_count = 0
 
         
     def is_running(self) :

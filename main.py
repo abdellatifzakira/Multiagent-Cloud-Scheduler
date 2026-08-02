@@ -10,6 +10,7 @@ import random
 from utilities.helpers import *
 from ExperimentRunner import Experiment
 from environment.NetworkManager import NetworkManager
+import time
 
 # REPRODUCIBILITY
 global_seed = 123
@@ -17,8 +18,8 @@ random.seed(global_seed)
 np.random.seed(global_seed)
 
 #WORKLOAD
-num_jobs = 300
-mean_job_gap = 0.025
+num_jobs = 450
+mean_job_gap = 0.01
 num_tasks_per_job = 5
 jobs_per_phase = num_jobs // 3
 edge_probability =  0.75 # controls how fuzzy the jobs are
@@ -44,7 +45,9 @@ jobs = Job.generate_jobs(
     num_jobs=num_jobs, 
     num_tasks_per_job=num_tasks_per_job,
     time_arrived=arrival_times,
-    edge_probability= edge_probability
+    edge_probability= edge_probability,
+    instructions_per_task = [250e5, 500e5],
+    data_transfer_range = [512, 1024]
 )
 
 plot_job_dags(jobs_list = jobs)
@@ -60,13 +63,14 @@ server_farm = Server_Farm().build_random_server_farms(
     cpu_range = [1024, 2048],
     ram_range = [4096, 4096*4],
     storage_range = [4096, 20000],
-    compute_power_range= [1e9, 3e9],
+    compute_power_range= [1e9, 1.5e9],
     max_vms_count = 5,
     alphas = [100, 500],
     betas = [2, 5],
     server_count = 4,
     virtual_allocation= [0.9, 0.95],
-    mode = 'ROUNDROBIN'
+    bandwidth=[4096, 16384],
+    mode = 'EXECUTION_TIME'
 )
 
 plot_server_network(farm= server_farm)
@@ -76,14 +80,15 @@ exp = Experiment(
                 infrastructure = server_farm,
                 jobs  = jobs,
                 scenarios_edges = [min(arrival_medium), min(arrival_surge)],
-                schedulers  = [RoundRobinScheduler(),
-                            LeastLoadedScheduler(mode='QUEUE'),
-                            LeastLoadedScheduler(mode='CPU'),
-                            DataLocalityAwareScheduler(mode='HYBRID'),
-                            DataLocalityAwareScheduler(mode='NAIVE'),
-                            EnergyAwareScheduler()
+                schedulers  = [
+                                RoundRobinScheduler(),
+                                LeastLoadedScheduler(mode='QUEUE'),
+                                LeastLoadedScheduler(mode='CPU'),
+                                DataLocalityAwareScheduler(mode='HYBRID'),
+                                DataLocalityAwareScheduler(mode='NAIVE'),
+                                EnergyAwareScheduler()
                             ],
-                time_step = 0.1,
+                time_step = 0.005,
                 network_manager = NetworkManager(),
                 network_overhead_enabled = True,
                 power_model = 'DEFAULT'
@@ -91,8 +96,8 @@ exp = Experiment(
                 )
 
 exp.build_environment()
-import time
 t = time.time()
 exp.run_experiment()
-print(f"EXPERIMENT RAN FOR {time.time() - t}s")
+print("="*50)
+print(f"EXPERIMENT RAN FOR : {round(time.time() - t, ndigits=2)} s")
 exp.plot_results()

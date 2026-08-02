@@ -57,9 +57,6 @@ class Server_Farm:
             server.server_farm_id = self.id
         return {server.id: server for server in servers}
     
-    def available_servers(self):
-        return [server for server in self.servers.values() if server.is_available()]
-    
     
     def get_power_price(self):
         return sum(server.get_power_consumption() for server in self.servers.values())*self.power_price
@@ -67,12 +64,7 @@ class Server_Farm:
     def get_power(self):
             return sum(server.get_power_consumption() for server in self.servers.values())
     
-    # Naive first in list first served at first to be enhanced later on
-    def host_task_in_farm(self, task):
-        for server in self.available_servers():
-            if server.host_task_in_server(task) :
-                return True
-        return False
+
 
     def update_farm_state(self,t, time_step):
         for server in self.servers.values() :
@@ -126,6 +118,7 @@ class Server_Farm:
                                 server_count = 3,
                                 power_price = 0.1,
                                 virtual_allocation = [0.85, 0.9],
+                                bandwidth = [1024*4, 4096*4],
                                 mode = 'ROUNDROBIN'
                                 ):
         
@@ -140,7 +133,7 @@ class Server_Farm:
         
         assert max_vms_count >= 2, \
             "Invalid simulation parameters: vm count must be at least 2"
-        assert min(cpu_range) / max_vms_count >= 16, \
+        assert min(cpu_range) / max_vms_count >= 32, \
             f"Invalid simulation parameters: each VM may receive only {int(min(cpu_range) / max_vms_count)} CPU units. " \
             "For reliable simulation results, ensure at least 16 CPU units per VM.\n" \
             "Consider reducing max_vms_count or increasing the minimum CPU value in cpu_range."
@@ -229,7 +222,7 @@ class Server_Farm:
         bandwidths = {}
         for i in range(len(server_list)):
             for j in range(i+1, len(server_list)):
-                    weight = np.random.randint(1024*4, 4096*4)
+                    weight = np.random.randint(min(bandwidth), max(bandwidth))
                     bandwidths[(i, j)] = weight
         
         
@@ -250,16 +243,6 @@ class Server_Farm:
         for server in self.servers.values():
             server.set_power_model(model)
     ###################################                
-    
-    def reset(self):
-        for server in self.servers.values() :
-            self.hosted_tasks = {}
-            self.task_queue = deque()
-            for vm in server.vms.values():
-                vm.hosted_task = {}
-                vm.pending_tasks = deque()
-                vm.used_cpu = 0.0
-                vm.used_ram = 0.0
     
     
     def submit_packets(self):

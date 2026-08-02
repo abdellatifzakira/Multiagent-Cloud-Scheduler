@@ -26,6 +26,7 @@ class MetricsManager:
         self.results['CPU_GLOBAL'] = {s  : [] for s in self.server_farm.servers.values()} # denotes the real server cpu usage
         self.results['RAM'] =  {s  : [] for s in self.server_farm.servers.values()}
         self.results['STORAGE'] =  {s  : [] for s in self.server_farm.servers.values()}
+        self.results['QUEUE_LENGTH'] =  {s  : [] for s in self.server_farm.servers.values()}
         self.results['CPU_STD'] = []
         self.results['POWER_PRICE'] = []
         self.results['POWER'] = []
@@ -96,6 +97,7 @@ class MetricsManager:
                 self.results['CPU_GLOBAL'][server].append(server.cpu_utilization())
                 self.results['RAM'][server].append(server.ram_utilization())
                 self.results['STORAGE'][server].append(server.storage_utilization())
+                self.results['QUEUE_LENGTH'][server].append(len(server.task_queue))
 
             
             
@@ -190,9 +192,9 @@ class MetricsManager:
         print(f"TOTAL SAVED DATA : {saved_data}")
         print(f"TOTAL SENT DATA : {sent_data}")
         print(f"TOTAL RECEIVED DATA : {received_data}")
-        print(f"TOTAL EXCHNAGE DATA (SENT + SAVED) : {saved_data + sent_data}")
+        print(f"TOTAL EXCHANGE DATA (SENT + SAVED) : {saved_data + sent_data}")
         print(f">> LOST DATA (DUE TO SIM ERROR) : {data_transfer - (saved_data + sent_data)}")
-        print(f"TOTAL EXCHNAGE DATA (RECEIVED + SAVED) : {saved_data + received_data}")
+        print(f"TOTAL EXCHANGE DATA (RECEIVED + SAVED) : {saved_data + received_data}")
         print(f">> LOST DATA (DUE TO SIM ERROR) : {data_transfer - (saved_data + received_data)}")
         
         
@@ -205,12 +207,9 @@ class MetricsManager:
             CPU = self.results['CPU_GLOBAL'][server]
             RAM = self.results['RAM'][server]
             STORAGE = self.results['STORAGE'][server]
-            computed_power = computed_power + np.array([server.power_function(CPU[i], RAM[i], STORAGE[i]) + server.static_power for i in range(len(CPU))])
+            computed_power = computed_power + np.array([round(server.power_function(CPU[i], RAM[i], STORAGE[i]) + server.static_power, ndigits=3) for i in range(len(CPU))])
         actual_power = np.array(self.results['POWER'])
-        print("FINAL SIMULATION ERROR LOG :")
-        print("COMPUTED POWER - ACTUAL POWER : ")
-        print(f"MIN ERROR : {min(computed_power - actual_power)}")
-        print(f"MAX ERROR : {max(computed_power - actual_power)}")
+        print(f"FINAL SIMULATION RELATIVE ERROR : {max(abs(computed_power - actual_power)/actual_power)} %")
         
     def print_infrastructure_details(self):
         print("<==== INFRASTRUCTURE INSIGHT : ====>")
@@ -220,6 +219,8 @@ class MetricsManager:
             print(f"SERVER RAM {s.c_ram}")
             print(f"SERVER COMPUTE POWER {s.compute_power}")
             print(f"PEAK CPU USAGE {s.peak_cpu}")
+            print(f"QUEUE LENGTH : MEAN = {np.mean(self.results['QUEUE_LENGTH'][s])}, RANGE = [{min(self.results['QUEUE_LENGTH'][s])},{max(self.results['QUEUE_LENGTH'][s])}]")
+            
             print("VMS INSIGHT")
             for vm in s.vms.values() :
                 print(f"=========> VM ID : {vm.id}")
@@ -228,8 +229,7 @@ class MetricsManager:
                 print(f"=========> VM COMPUTE POWER : {vm.compute_power}")
                 print(f"=========> COMPLETED TASKS : {vm.completed_tasks}")
             print(f"TOTAL TASKS RUN ON THE SERVER {s.id} : {sum(vm.completed_tasks for vm in s.vms.values())}")
-        if self.server_farm.power_model != 'DEFAULT' :
-            self.print_power_model_integrity_check()
+        self.print_power_model_integrity_check()
             
     
 

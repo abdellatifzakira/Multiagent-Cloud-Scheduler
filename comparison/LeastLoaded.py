@@ -6,7 +6,7 @@ class LeastLoadedScheduler(Scheduler):
                  mode : str = 'CPU',
                  sorting : str = 'FIFO'
                  ):
-        super().__init__('LL' + '-' + mode, 'Least Loaded Scheduler : mode ' + mode + '| sorting ' + sorting)
+        super().__init__('LL' + '-' + mode, 'Least Loaded Scheduler : mode ' + mode + ' | sorting ' + sorting)
         self.mode = mode
         self.sorting = sorting
 
@@ -28,7 +28,7 @@ class LeastLoadedScheduler(Scheduler):
                 )
             case 'SLA' :
                 ready_tasks.sort(
-                    key=lambda task: task.job_sla - (current_time - task.job_arrival) - task.num_instructions/25e6
+                    key=lambda task: task.job_sla - (current_time - task.job_arrival)
                 )
                 
                 
@@ -94,7 +94,7 @@ class LeastLoadedScheduler(Scheduler):
                 for s in servers:
                     current = s.virtual_cpu_efficiency()
 
-                    max_available_vm_cpu = max(
+                    max_available_vm_cpu = sum(
                         vm.cpu - vm.used_cpu
                         for vm in s.vms.values()
                     )
@@ -102,10 +102,9 @@ class LeastLoadedScheduler(Scheduler):
                     queue_pressure = np.sum(
                         [tsk.cpu for i, tsk in enumerate(s.task_queue)]
                     )
-                    score = current + max(
-                        0,
-                        queue_pressure - max_available_vm_cpu
-                    )
+                    queue_pressure_norm = max(0, queue_pressure - max_available_vm_cpu)/(s.c_cpu*s.virtualization_level)
+                    
+                    score = current + queue_pressure_norm
 
                     loads.append((s, score))
 

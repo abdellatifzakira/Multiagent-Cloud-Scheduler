@@ -67,7 +67,7 @@ class Server:
         self.vm_id_list = list(self.vms.keys())
         
         self.power_model = 'DEFAULT'
-        self.power_function = None
+        self.power_function = self.dynamic_power
         
         
     
@@ -154,15 +154,7 @@ class Server:
             vm_id = start_id + i
             new_vm = Vm(id=vm_id, c_cpu=cpu[i], c_ram=ram[i], compute_power=compute[i])
             self.spawn_vm(new_vm)
-        self.vm_id_list = list(self.vms.keys())
-        
-        
-    
-    def is_available(self) -> bool:
-        return (self.cpu_utilization() < 1 and
-                self.ram_utilization() < 1 and
-                self.storage_utilization() < 1
-                )
+        self.vm_id_list = list(self.vms.keys()) 
     
     def roundrobin(self, task):
         if not self.vm_id_list:
@@ -217,14 +209,34 @@ class Server:
                         task.server = self
                         task.vm = vm
                         return True
-        def get_expected_latency(vm):
-            _vm = vm[1]
-            _all_instructions = sum(
-                [tsk.remaining_instructions
-                for tsk in _vm.hosted_task.keys()]
+        def get_expected_latency(vm, new_task = task):
+            vm = vm[1]
+
+            tasks = list(vm.hosted_task.keys()) + [new_task]
+
+            total_cpu = sum(
+                t.cpu for t in tasks
             )
-            
-            return _all_instructions/_vm.compute_power
+
+            finish_times = []
+
+            for t in tasks:
+
+                share = t.cpu / total_cpu
+
+                effective_power = (
+                    vm.compute_power * share
+                )
+                
+                if effective_power <= 0 :
+                    raise ValueError("0 compute power detected ")
+
+                finish_times.append(
+                    t.remaining_instructions / effective_power
+                )
+
+            return sum(finish_times)/len(finish_times)
+        
         vms = sorted(
                     self.vms.items(),
                     key=get_expected_latency,
@@ -308,7 +320,10 @@ class Server:
             CPU = self.cpu_utilization()
             RAM = self.ram_utilization()
             STORAGE = self.storage_utilization()
-            return self.power_function(CPU, RAM, STORAGE) + self.static_power
+            return round(self.power_function(CPU, RAM, STORAGE) + self.static_power, ndigits=3)
+    
+    def dynamic_power(self,cpu, ram, storage):
+        return  round((cpu**self.beta)*self.alpha , ndigits=3)
             
     
     
@@ -335,7 +350,7 @@ class Server:
             CPU = self.cpu_utilization() + dcpu
             RAM = self.ram_utilization() + dram
             STORAGE = self.storage_utilization() + dstorage
-            return self.power_function(CPU, RAM, STORAGE) + self.static_power
+            return round(self.power_function(CPU, RAM, STORAGE) + self.static_power, ndigits=3)
 
     
     

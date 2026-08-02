@@ -13,7 +13,7 @@ class Job:
         time_arrived: float = None,
         data_transfer_weights: dict = None,
         id: int = None,
-        sla_factor= 1.25,
+        sla_factor= 1.5,
 
     ):
         if id is None:
@@ -28,7 +28,7 @@ class Job:
         self.total_tasks = len(self.tasks) if tasks is not None else 0
         self.dag = self.build_dag()
         self.end_time = None
-        self.sla_violated = None,
+        self.sla_violated = None
         self.counted = False
         self.success = False
         self.sla_factor = sla_factor
@@ -148,7 +148,10 @@ class Job:
     
     
     @staticmethod
-    def generate_jobs(num_jobs, num_tasks_per_job=4, time_arrived = [], edge_probability = 0.5):
+    def generate_jobs(num_jobs, num_tasks_per_job=4,
+                      time_arrived = [], edge_probability = 0.5,
+                      instructions_per_task = [250e6, 1e9],
+                      data_transfer_range = [512, 1024]):
         """
         Generate multiple jobs with random parameters.
         
@@ -161,23 +164,26 @@ class Job:
         """
         
         if time_arrived is not None :
-            assert len(time_arrived) == num_jobs, "[INVALID INPUT]\nArrival times does not macth the jobs number."
+            assert len(time_arrived) == num_jobs, \
+                "[INVALID INPUT] : Arrival times does not macth the jobs number."
         
         jobs = []
         for job_id in range(num_jobs):
             
             # Random task parameters
-            cpu_req = [round(np.random.uniform(12, 32), 0) for _ in range(num_tasks_per_job)]
+            cpu_req = [round(np.random.uniform(12, 64), 0) for _ in range(num_tasks_per_job)]
             ram_req = [round(np.random.uniform(2, 32), 0) for _ in range(num_tasks_per_job)]
-            instructions = [round(np.random.uniform(250e6,1e9), 0) for _ in range(num_tasks_per_job)]
+            instructions = [round(np.random.uniform(min(instructions_per_task),max(instructions_per_task)), 0) for _ in range(num_tasks_per_job)]
             sizes = [round(np.random.uniform(32, 128), 0) for _ in range(num_tasks_per_job)]
             
+            min_data = min(data_transfer_range)
+            max_data = max(data_transfer_range)
             # Generate random DAG edges
             data_transfer_weights = {}
             for i in range(num_tasks_per_job - 1):
                 for j in range(i + 1, num_tasks_per_job):
                     if np.random.random() < edge_probability:  # chance of edge
-                        weight = np.random.randint(256, 1025)
+                        weight = np.random.randint(min_data,max_data)
                         data_transfer_weights[(i, j)] = weight
             
             job = Job().spawn_job(
@@ -240,7 +246,7 @@ class Job:
                     # get edge ID
                     eid = graph.get_eid(node, child)
                     weight = graph.es[eid]["weight"]
-                    print(f"{indent} └=======({weight})=====> {child}")
+                    print(f"{indent} =======({weight})=====> {child}")
                 self.print_job_layout(subtree, graph, level + 1)
     
     
@@ -262,30 +268,6 @@ class Job:
             dfs(r, [r], 0)
         return all_paths
     
-    
-    def get_deadline(self):
-        return np.sum(task.runtime for task in self.tasks.values())
-    
-    
-    def get_direct_paths_runtime(self):
-        graph = self.dag
-        if graph is None:
-            return None
-        roots = [v.index for v in graph.vs if graph.degree(v, mode="in") == 0]
-        all_paths = {}
-        def dfs(node, path, runtime):
-            children = graph.neighbors(node, mode="out")
-            # leaf node → store path
-            if len(children) == 0:
-                all_paths[tuple(path)] = runtime
-                return
-            for child in children:
-                node_runtime = graph.vs[child]["runtime"]
-                dfs(child, path + [child], round(runtime + node_runtime, ndigits=2))
-        for r in roots:
-            root_runtime = graph.vs[r]["runtime"]
-            dfs(r, [r], round(root_runtime, ndigits=2))
-        return all_paths
     
     
     def get_direct_paths_cpu_req(self):
@@ -342,12 +324,6 @@ class Job:
         most_costly_path = max(costs.items(), key=lambda item: item[1])
         return most_costly_path
     
-    def get_time_consuming_path(self):
-        runs = self.get_direct_paths_runtime()
-        if not runs:
-            return (0,max(tsk.runtime for tsk in self.tasks.values()))
-        most_time_consuming_path = max(runs.items(), key=lambda item: item[1])
-        return most_time_consuming_path
     
     
     def get_cpu_demanding_path(self):
@@ -392,7 +368,7 @@ class Job:
     
     def get_critical_path_runtime(self):
         
-        _compute_power_refrence = 25e6 # 250_000_000 instruction/second a baseline : modest vm
+        _compute_power_refrence = 25e6 # 25_000_000 instruction/second a baseline : modest vm
 
         if self.dag is None:
             return max(
@@ -425,51 +401,3 @@ class Job:
 
         return max(earliest_finish.values())/_compute_power_refrence
 
-# QUICK TESTS :
-
-if __name__ == "__main__":
-    
-    job_1 =  Job()
-    
-    job_1 = job_1.spawn_job(
-        num_tasks= 4,
-        cpu_req= [0.01, 0.03, 0.05, 0.03],
-        ram_req= [0.01, 0.01, 0.09, 0.03],
-        runtime= [25, 10, 25, 10],
-        data_transfer_weights= {
-         (0,1) : 1,
-         (0,2) : 2,
-         (1,3) : 3
-        }
-    )
-    print("Job_1 created successfuly")
-    
-    tree = job_1.describe_job()
-    graph = job_1.dag
-    
-    print("<","="*25,">")
-    print(f"{job_1.get_total_req()=}", end="\n") # expecting 0.1, 0.1
-    print("<","="*25,">")
-    print(tree)
-    
-    job_1.print_job_layout(tree=tree, graph=graph)
-    
-    print(job_1.get_direct_paths_cost())
-    print(job_1.get_direct_paths_runtime())
-    print(job_1.get_total_ram_req())
-    print(job_1.get_total_cpu_req())
-    
-    
-    print("COSTLY PATH : ", job_1.get_costly_path()) # expecting [0, 1, 3] : 4
-    
-    print("TEDIOUS PATH : ", job_1.get_time_consuming_path()) # expecting [0, 2] : 35
-    
-    print("CPU DEMANDING PATH : ", job_1.get_cpu_demanding_path()) # expecting [0, 1, 3] : 0.07
-    
-    print("RAM CONSUMING PATH : ", job_1.get_ram_demanding_path()) # expecting [0, 2] : 0.1
-    
-    
-    for task in job_1.tasks.values():
-        print(f"TASK N: {task.id} HAVE PARENTS : ",[t.id for t in task.parents])
-        print(f"TASK N: {task.id}  HAVE CHILDREN : ",[t.id for t in task.children])
-    #print([task.job_id for task in job_1.tasks.values()])

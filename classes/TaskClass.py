@@ -42,7 +42,7 @@ class Task:
   
   def advance_timer(self, _t, time_step) :
     if self.status != 2 :
-      return
+      raise ValueError("Non Running Task in a Vm")
     if self.remaining_instructions > 0 :
       self.completion_time += time_step
     else :

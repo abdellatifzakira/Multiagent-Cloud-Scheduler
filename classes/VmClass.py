@@ -41,7 +41,7 @@ class Vm:
     # ----------------------------
     def host_task(self, task):     
         
-        self.hosted_task[task] = task.id
+        self.hosted_task[task] = task.job_id
 
         self.used_cpu += task.cpu
         self.used_ram += task.ram
@@ -55,12 +55,19 @@ class Vm:
         
         if len(self.hosted_task.keys()) > 0 :
             actual_instruction_rate = time_step*self.compute_power
+            #all_cpu_demand = sum(task.cpu for task in self.hosted_task.keys())
+            #instruction_per_cpu = actual_instruction_rate/all_cpu_demand
             actual_instruction_rate_per_task = actual_instruction_rate/len(self.hosted_task.keys())
         
-        if self.hosted_task is {} :
+        if not self.hosted_task :
             return
         for _task in list(self.hosted_task.keys()):
-            _task.remaining_instructions -= actual_instruction_rate_per_task
+            #_computed = min(_task.remaining_instructions, instruction_per_cpu*_task.cpu)
+            
+            _computed = min(_task.remaining_instructions, actual_instruction_rate_per_task)
+            _task.remaining_instructions -= _computed
+        
+        for _task in list(self.hosted_task.keys()):
             _task.advance_timer(_t, time_step)
 
     # ----------------------------
