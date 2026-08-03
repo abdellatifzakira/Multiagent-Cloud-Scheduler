@@ -51,6 +51,8 @@ class JobManager:
         ready_task.sort(key=lambda task: task.arrival_time)
 
         self.ready_tasks = ready_task
+        return self.ready_tasks
+    
 
 
     def update_running_tasks(self):

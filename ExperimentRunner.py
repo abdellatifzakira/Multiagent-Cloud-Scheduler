@@ -3,6 +3,9 @@ from utilities.JobManager import JobManager
 from environment.EnvironmentClass import Environment
 from environment.MetricsManager import MetricsManager
 from utilities.ResultPlotter import plot_metrics
+from templates.Scheduler import Scheduler
+from RL.agents.Agent import Agent
+from RL.CloudEnv import CloudEnv
 import copy
 
 class Experiment:
@@ -35,6 +38,11 @@ class Experiment:
             
             self.network_overhead_enabled = network_overhead_enabled
             
+            last_arrived = max(
+                            job.time_arrived for job in self.jobs
+                        )
+            self.scenarios_edges.append(last_arrived)
+            
             if not self.network_overhead_enabled :
                 print("\n[INFO] : Network communication overhead is disabled\n"
                       "The experiment is under the assumption of infinite bandwidth\n")
@@ -53,8 +61,9 @@ class Experiment:
                 job_copy = copy.deepcopy(self.jobs)
                 
                 network = copy.deepcopy(self.network_manager)
-
-                self.environments[scheduler] = Environment(
+                
+                if isinstance(scheduler, Scheduler):
+                    self.environments[scheduler] = Environment(
                                                         server_farm=farm,
                                                         metrics_manager=MetricsManager(
                                                             farm,
@@ -68,11 +77,33 @@ class Experiment:
                                                         network_manager =  network,
                                                         network_overhead = self.network_overhead_enabled
                                                     )
+                if isinstance(scheduler, Agent):
+                    self.environments[scheduler] =  CloudEnv(
+                                    server_farm=farm,
+                                    metrics_manager=MetricsManager(server_farm=farm, jobs=job_copy),
+                                    job_manager=JobManager(jobs=job_copy),
+                                    agent=scheduler,
+                                    network_manager= network,
+                                    network_overhead= self.network_overhead_enabled,
+                                    time_step= self.time_step
+                                )
         
         def run_experiment(self):
             for scheduler in self.schedulers :
                 print(f"{scheduler.name} : SCHEDULING - STARTS")
-                self.results[scheduler] = self.environments[scheduler].run()
+                if isinstance(scheduler, Scheduler):
+                    self.results[scheduler] = self.environments[scheduler].run()
+                if isinstance(scheduler, Agent):
+                    env = self.environments[scheduler]
+                    obs, _ = env.reset()
+                    done = False
+
+                    while not done:
+                        scheduler.observe(obs)
+                        action = scheduler.take_action()
+                        obs, reward, done, _, _ = env.step(action)
+                    self.results[scheduler]  = env.get_results()
+                    env.log()
         
         
         def plot_results(self) :

@@ -35,10 +35,6 @@ class Environment:
                 len(self.job_manager.ready_tasks)>0 or
                 self.job_manager.pending_tasks > 0 )
     
-    def reset(self):
-        self.server_farm.reset()
-        self.job_manager.reset()
-        self.metrics_manager.initialize()
     
         
     def run(self):

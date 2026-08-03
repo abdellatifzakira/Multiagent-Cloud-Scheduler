@@ -18,7 +18,7 @@ class Vm:
         self.used_cpu = 0.0
         self.used_ram = 0.0
         
-        self.max_concurrent_tasks = 250
+        self.max_concurrent_tasks = 100
         self.completed_tasks = 0
         
 
