@@ -6,12 +6,19 @@ except ModuleNotFoundError:
 class RandomAgent(Agent):
     def __init__(self, seed = 123):
         super().__init__('RA', 'RANDOM AGENT')
-    
+        self.trainable = False
     
     def take_action(self):
         action = self.action_space.sample()
         return action
     
     
-    def observe(self, state):
-        return state
+    def observe(self, *state):
+        pass
+
+    def build(self):
+        pass
+    
+    def update(self, *args):
+        pass
+    

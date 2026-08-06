@@ -115,7 +115,7 @@ class LeastLoadedScheduler(Scheduler):
             case 'HYBRID' :
                 loads = []
                 for s in servers:
-                    current = s.cpu_utilization()
+                    current = s.virtual_cpu_efficiency()
 
                     max_available_vm_cpu = max(
                         vm.cpu - vm.used_cpu
@@ -128,9 +128,9 @@ class LeastLoadedScheduler(Scheduler):
                     score_cpu = current + max(
                         0,
                         queue_pressure - max_available_vm_cpu
-                    )
+                    )/(s.c_cpu*s.virtualization_level)
                     
-                    score_queue = (sum(tsk.runtime for tsk in s.task_queue) + sum(tsk.timer for tsk in s.hosted_tasks.keys()))/sum(vm.max_concurrent_tasks for vm in s.vms.values())
+                    score_queue = self.expected_server_latency(s)
 
                     loads.append((s, 0.3*score_cpu + 0.7*score_queue))
                 

@@ -11,6 +11,7 @@ from utilities.helpers import *
 from ExperimentRunner import Experiment
 from environment.NetworkManager import NetworkManager
 from RL.agents.RandomAgent import RandomAgent
+from RL.agents.DQNAgent import DQNAgent 
 import time
 
 # REPRODUCIBILITY
@@ -51,6 +52,32 @@ jobs = Job.generate_jobs(
     data_transfer_range = [512, 1024]
 )
 
+# Light
+light_gap_test = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap*10, jobs_per_phase)])
+arrival_light_test = np.cumsum(light_gap_test)
+# Medium
+medium_gap_test = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap*4, jobs_per_phase)])
+arrival_medium_test = np.cumsum(medium_gap_test) + arrival_light_test[-1] 
+# Surge
+surge_gap_test = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap, jobs_per_phase)])
+arrival_surge_test = np.cumsum(surge_gap_test) + arrival_medium_test[-1] 
+
+arrival_times_test = np.concatenate([
+    arrival_light_test,
+    arrival_medium_test,
+    arrival_surge_test
+])
+
+
+jobs_test = Job.generate_jobs(
+    num_jobs=num_jobs, 
+    num_tasks_per_job=num_tasks_per_job,
+    time_arrived=arrival_times_test,
+    edge_probability= edge_probability,
+    instructions_per_task = [250e5, 500e5],
+    data_transfer_range = [512, 1024]
+)
+
 plot_job_dags(jobs_list = jobs)
 
 
@@ -82,18 +109,20 @@ exp = Experiment(
                 jobs  = jobs,
                 scenarios_edges = [min(arrival_medium), min(arrival_surge)],
                 schedulers  = [
-                                RoundRobinScheduler(),
+                                #RoundRobinScheduler(),
                                 #LeastLoadedScheduler(mode='QUEUE'),
-                                LeastLoadedScheduler(mode='CPU'),
-                                DataLocalityAwareScheduler(mode='HYBRID'),
+                                #LeastLoadedScheduler(mode='CPU'),
+                                #DataLocalityAwareScheduler(mode='HYBRID'),
                                 #DataLocalityAwareScheduler(mode='NAIVE'),
-                                EnergyAwareScheduler(),
-                                RandomAgent(seed= global_seed)
+                                #EnergyAwareScheduler(),
+                                RandomAgent(seed= global_seed),
+                                DQNAgent()
                             ],
                 time_step = 0.005,
                 network_manager = NetworkManager(),
                 network_overhead_enabled = True,
-                power_model = 'DEFAULT'
+                power_model = 'DEFAULT',
+                evaluation = jobs_test
                 
                 )
 

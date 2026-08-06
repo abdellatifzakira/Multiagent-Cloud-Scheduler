@@ -102,7 +102,7 @@ def plot_metrics(results_list,
                     t,
                     y,
                     linewidth=2,
-                    label=res["NAME"] + ' : ' + f'{round(np.mean(y), ndigits=2)}'
+                    label=res["NAME"] + ' : ' + f'{round(np.trapz(y, t)/1000, ndigits=2)} kJ'
                 )
             else :
                 ax.plot(

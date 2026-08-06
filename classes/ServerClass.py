@@ -4,9 +4,7 @@ try :
     from classes.VmClass import Vm
 except ModuleNotFoundError: 
     from VmClass import Vm
-    
 from utilities.helpers import parse_power_equation
-    
 
 
 class Server:
@@ -343,14 +341,10 @@ class Server:
         dcpu = self.get_cpu_usage_variation(task.cpu)
         dram = self.get_ram_usage_variation(task.ram)
         dstorage = self.get_storage_usage_variation(task.size)
-        if self.power_model == 'DEFAULT' :
-            expected_cpu_utilization = self.cpu_utilization() + dcpu
-            return  round((expected_cpu_utilization**self.beta)*self.alpha + self.static_power, ndigits=3)
-        else :
-            CPU = self.cpu_utilization() + dcpu
-            RAM = self.ram_utilization() + dram
-            STORAGE = self.storage_utilization() + dstorage
-            return round(self.power_function(CPU, RAM, STORAGE) + self.static_power, ndigits=3)
+        CPU = self.cpu_utilization() + dcpu
+        RAM = self.ram_utilization() + dram
+        STORAGE = self.storage_utilization() + dstorage
+        return round(self.power_function(CPU, RAM, STORAGE) + self.static_power, ndigits=3)
 
     
     
