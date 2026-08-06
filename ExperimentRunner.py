@@ -2,6 +2,7 @@
 from utilities.JobManager import JobManager
 from environment.EnvironmentClass import Environment
 from environment.MetricsManager import MetricsManager
+from environment.NetworkManager import NetworkManager
 from utilities.ResultPlotter import plot_metrics
 from templates.Scheduler import Scheduler
 from RL.agents.Agent import Agent
@@ -16,7 +17,6 @@ class Experiment:
                      scenarios_edges = [],
                      schedulers = [],
                      time_step = 0.01,
-                     network_manager = None,
                      network_overhead_enabled = False,
                      power_model = 'DEFAULT',
                      evaluation = None,
@@ -31,7 +31,6 @@ class Experiment:
             self.scenarios_edges = scenarios_edges
             self.schedulers = schedulers
             self.time_step = time_step
-            self.network_manager = network_manager
             self.power_model = power_model
             
             self.environments = {}
@@ -64,8 +63,6 @@ class Experiment:
 
                 job_copy = copy.deepcopy(self.jobs)
                 
-                network = copy.deepcopy(self.network_manager)
-                
                 if isinstance(scheduler, Scheduler):
                     self.environments[scheduler] = Environment(
                                                         server_farm=farm,
@@ -78,7 +75,7 @@ class Experiment:
                                                         ),
                                                         scheduler=scheduler,
                                                         time_step=self.time_step,
-                                                        network_manager =  network,
+                                                        network_manager =  NetworkManager(server_farm=farm),
                                                         network_overhead = self.network_overhead_enabled
                                                     )
                 if isinstance(scheduler, Agent):
@@ -87,7 +84,7 @@ class Experiment:
                                     metrics_manager=MetricsManager(server_farm=farm, jobs=job_copy),
                                     job_manager=JobManager(jobs=job_copy),
                                     agent=scheduler,
-                                    network_manager= network,
+                                    network_manager= NetworkManager(server_farm=farm),
                                     network_overhead= self.network_overhead_enabled,
                                     time_step= self.time_step,
                                     evaluation = self.evaluation
@@ -102,7 +99,7 @@ class Experiment:
                     env = self.environments[scheduler]
                     episodes = 0
                     if scheduler.trainable :
-                        episodes = 5
+                        episodes = 10
                     for episode in range(episodes+1):
                         if episode == episodes:
                             env.mod = 'TEST'

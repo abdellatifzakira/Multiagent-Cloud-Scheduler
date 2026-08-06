@@ -9,17 +9,37 @@ class NetworkManager:
         
         self.routes = {}
         
-        
         self.bandwidth = {}
         
-        # (parent : sender, child : receiver) : [sent data, time, status: 0 -> pending, 1 -> sent]
+        for s in server_farm.servers.values():
+            for server in server_farm.servers.values() :
+                if server.id != s.id :
+                    key_direct = (min(server.id,s.id), max(server.id,s.id))
+                    key_inverse = (max(server.id,s.id), min(server.id,s.id))
+                    
+                    # bw consitency
+                    bw = self.server_farm.bandwidths[key_direct]
+                    self.bandwidth[key_direct] = bw
+                    self.bandwidth[key_inverse] = bw
+                    
+                    # packets storage
+                    self.routes[key_direct] = []
+                    self.routes[key_inverse] = []       
+                    
         
+        # data packet (parent : sender, child : receiver) : [sent data, time, status: 0 -> pending, 1 -> sent, 2 -> processed]
+        # route {(server pair) : []}   
     
     def resolve_routing(self):
         for key, value in self.data_packets.items() :
-            speed = self.server_farm.bandwidths[(min(key[0].server.id,key[1].server.id), max(key[0].server.id,key[1].server.id))]
-            self.routes[key] = [key[0].server, key[1].server, value[0], speed]
-            self.bandwidth[frozenset([key[0].server, key[1].server])] = speed
+            parent = key[0]
+            child = key[1]
+            direction = (parent.server.id, child.server.id)
+            
+            route =self.routes[direction]
+            
+            route.append({key : value.copy()})
+            
             self.data_packets[key][2] = 2 # processed
         self.data_packets = {key : self.data_packets[key] for key in self.data_packets.keys() if self.data_packets[key][2] == 1}
         
@@ -27,7 +47,7 @@ class NetworkManager:
     def update_data_packets(self, new_packets):
         for packets in new_packets :
             for key, value in packets.items():
-                assert value[2] == 1, f"[Fatal Error] : Unsend data was submitted"
+                assert value[2] == 1, f"[Fatal Error] : Unsent data was submitted"
                 self.data_packets[key] = value
         
         # ascending order for chronogical consitency
@@ -35,18 +55,23 @@ class NetworkManager:
         
     def distribute_data_payloads(self, t, time_step):
         if not self.routes:
-            return
-        effective_bandwidth = {key : value*time_step for key, value in self.bandwidth.items()}
-        bandwidth_consumption = effective_bandwidth   
-        # each route is the form {(parent, child) : [src, dst, data, bw]}
-        for duo in self.routes.keys():
-            key = frozenset([self.routes[duo][0], self.routes[duo][1]])
-            while self.routes[duo][2] > 0 and bandwidth_consumption[key] > 0:
-                transfer = min(self.routes[duo][2], effective_bandwidth[key])
-                self.routes[duo][1].receive_data(duo, transfer)
-                bandwidth_consumption[key] -= transfer
-                self.routes[duo][2] -= transfer
+            raise ValueError("Routes was not properly initialized !")
 
-        self.routes = {duo: data for duo, data in self.routes.items() if data[2] > 0}
+        effective_bandwidth = {key : value*time_step for key, value in self.bandwidth.items()}
+        # each route is the form {(parent, child) : [data, time, status]}
+        for channel in self.routes.keys(): # channel : server 1 -> server 2
+            data = self.routes[channel]
+            if data:
+                competition = len(data)
+                assert competition > 0
+                fair_share = effective_bandwidth[channel]/competition
+                for tr in data :
+                    for key, transmission in tr.items():
+                        transfer = min(transmission[0], fair_share)
+                        key[1].server.receive_data(key, transfer)
+                        transmission[0] -= transfer
+
+                data = [{key : value} for tr in data for key, value in tr.items()  if value[0] > 0]
+                self.routes[channel] = data
 
         

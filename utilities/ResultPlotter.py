@@ -55,7 +55,7 @@ def plot_metrics(results_list,
 
     metrics = [
         ("CPU_STD","Standard Deviation\nVirtual CPU Efficiency", "STD CPU Efficiency"),
-        ("POWER_PRICE","Power Price Over Time\n(Smoothed)", "Power Price"),
+        ("POWER","Power Consumption Over Time\n(Smoothed)", "Power"),
         ("CUM_DATA_TRANSFER","Cumulative Data Transfer Over Time", "Data Transfer"),
         ("SLA","SLA Violations", "Number Of Jobs"),
         ("JOB_MEAN_COMPLETION_TIME", "Mean Completion\nTime Per Job", "Completion Time"),
@@ -89,7 +89,7 @@ def plot_metrics(results_list,
             y=res[metric]
 
 
-            if metric=="POWER_PRICE":
+            if metric=="POWER":
 
                 t,y=smooth_by_bins(
                     t,
@@ -97,7 +97,7 @@ def plot_metrics(results_list,
                     num_bins
                 )
             
-            if metric=="POWER_PRICE":
+            if metric=="POWER":
                 ax.plot(
                     t,
                     y,

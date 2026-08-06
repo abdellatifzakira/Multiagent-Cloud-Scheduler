@@ -109,17 +109,16 @@ exp = Experiment(
                 jobs  = jobs,
                 scenarios_edges = [min(arrival_medium), min(arrival_surge)],
                 schedulers  = [
-                                #RoundRobinScheduler(),
+                                RoundRobinScheduler(),
                                 #LeastLoadedScheduler(mode='QUEUE'),
-                                #LeastLoadedScheduler(mode='CPU'),
-                                #DataLocalityAwareScheduler(mode='HYBRID'),
-                                #DataLocalityAwareScheduler(mode='NAIVE'),
-                                #EnergyAwareScheduler(),
+                                LeastLoadedScheduler(mode='CPU'),
+                                DataLocalityAwareScheduler(mode='HYBRID'),
+                                DataLocalityAwareScheduler(mode='NAIVE'),
+                                EnergyAwareScheduler(),
                                 RandomAgent(seed= global_seed),
                                 DQNAgent()
                             ],
                 time_step = 0.005,
-                network_manager = NetworkManager(),
                 network_overhead_enabled = True,
                 power_model = 'DEFAULT',
                 evaluation = jobs_test

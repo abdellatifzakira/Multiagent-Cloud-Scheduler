@@ -35,6 +35,17 @@ class Environment:
                 len(self.job_manager.ready_tasks)>0 or
                 self.job_manager.pending_tasks > 0 )
     
+    def is_running_debug(self) :
+        print(self.job_manager.workload, 
+                    len(self.job_manager.running_tasks), 
+                    len(self.job_manager.ready_tasks), 
+                    self.job_manager.pending_tasks,
+        )
+        return ( self.job_manager.workload or
+                    len(self.job_manager.running_tasks)>0 or
+                    len(self.job_manager.ready_tasks)>0 or
+                    self.job_manager.pending_tasks > 0 )
+    
     
         
     def run(self):
