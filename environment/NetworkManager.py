@@ -64,7 +64,7 @@ class NetworkManager:
             if data:
                 competition = len(data)
                 assert competition > 0
-                fair_share = effective_bandwidth[channel]/competition
+                fair_share = round(effective_bandwidth[channel]/competition, ndigits= 2)
                 for tr in data :
                     for key, transmission in tr.items():
                         transfer = min(transmission[0], fair_share)

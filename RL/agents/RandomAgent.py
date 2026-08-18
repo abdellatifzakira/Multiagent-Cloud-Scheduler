@@ -7,6 +7,8 @@ class RandomAgent(Agent):
     def __init__(self, seed = 123):
         super().__init__('RA', 'RANDOM AGENT')
         self.trainable = False
+        self.seed = seed
+        
     
     def take_action(self):
         action = self.action_space.sample()
@@ -17,7 +19,7 @@ class RandomAgent(Agent):
         pass
 
     def build(self):
-        pass
+        self.action_space.seed(self.seed)
     
     def update(self, *args):
         pass

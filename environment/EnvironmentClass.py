@@ -9,6 +9,7 @@ class Environment:
                  time_step = 0.01,
                  network_manager = None,
                  network_overhead = False,
+                 batch_size = 4
                  ):
         self.server_farm = server_farm
         self.job_manager = job_manager
@@ -21,12 +22,16 @@ class Environment:
         self.network_manager = network_manager
         self.network_overhead = network_overhead
         
+        self.draining_time = None
+        
         self.server_farm.communication_enabled = self.network_overhead 
         self.server_farm.set_communication_mode()
         
         network_manager.server_farm = server_farm
         
         self.hosting_count = 0
+        
+        self.batch_size = batch_size
 
         
     def is_running(self) :
@@ -62,8 +67,12 @@ class Environment:
             self.job_manager.update_arrival_jobs(t)
 
             self.job_manager.update_ready_tasks()
-            
-            self.scheduler.assign_tasks(self.job_manager.ready_tasks, t)
+            if self.is_scheduling_time():
+                self.scheduler.assign_tasks(self.job_manager.ready_tasks[:self.batch_size], t)
+            if 0< len(self.job_manager.ready_tasks[:self.batch_size])< self.batch_size and not self.job_manager.workload:
+                print(f"Draining remaining {len(self.job_manager.ready_tasks[:self.batch_size])} tasks")
+                self.draining_time = t
+                self.scheduler.assign_tasks(self.job_manager.ready_tasks[:self.batch_size], t)
 
             for server in self.server_farm.servers.values() :
                 server.execute_tasks(t)
@@ -105,8 +114,12 @@ class Environment:
         print("END SUMMARY RUN FOR SCHEDULER : ", self.scheduler.name)
         print("==================================================")
 
-        
-            
+        if self.draining_time:
+            self.metrics_manager.clamp_results(critical_time= self.draining_time)
         return  self.metrics_manager.results
+    
+    
+    def is_scheduling_time(self):
+        return len(self.job_manager.ready_tasks)>= self.batch_size
 
 

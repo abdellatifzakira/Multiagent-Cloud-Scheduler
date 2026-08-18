@@ -1,3 +1,4 @@
+# ExperimentRunner.py
 
 from utilities.JobManager import JobManager
 from environment.EnvironmentClass import Environment
@@ -7,130 +8,279 @@ from utilities.ResultPlotter import plot_metrics
 from templates.Scheduler import Scheduler
 from RL.agents.Agent import Agent
 from RL.CloudEnv import CloudEnv
+
 import copy
 import numpy as np
 
+
 class Experiment:
-        def __init__(self,
-                     infrastructure =  None,
-                     jobs = [],
-                     scenarios_edges = [],
-                     schedulers = [],
-                     time_step = 0.01,
-                     network_overhead_enabled = False,
-                     power_model = 'DEFAULT',
-                     evaluation = None,
-                ):
-            """
-            For the power model use these symbols while writing the equations :
-            CPU, RAM, STORAGE
-            """
-            
-            self.infrastructure = infrastructure
-            self.jobs = jobs
-            self.scenarios_edges = scenarios_edges
-            self.schedulers = schedulers
-            self.time_step = time_step
-            self.power_model = power_model
-            
-            self.environments = {}
-            
-            self.results = {}
-            
-            self.network_overhead_enabled = network_overhead_enabled
-            
-            last_arrived = max(
-                            job.time_arrived for job in self.jobs
+    def __init__(
+        self,
+        infrastructure=None,
+        jobs=None,
+        scenarios_edges=None,
+        schedulers=None,
+        time_step=0.01,
+        network_overhead_enabled=False,
+        power_model="DEFAULT",
+        evaluation=None,
+        episodes=10,
+        batch_size = 4,
+    ):
+        self.infrastructure = infrastructure
+        self.jobs = jobs or []
+        self.scenarios_edges = (
+            scenarios_edges or []
+        )
+        self.schedulers = schedulers or []
+
+        self.time_step = time_step
+        self.power_model = power_model
+        self.batch_size = batch_size
+
+        self.environments = {}
+        self.results = {}
+
+        self.network_overhead_enabled = (
+            network_overhead_enabled
+        )
+
+        self.evaluation = evaluation
+        self.episodes = int(episodes)
+
+        if not self.network_overhead_enabled:
+            print(
+                "\n[INFO] : Network communication "
+                "overhead is disabled\n"
+                "The experiment is under the assumption "
+                "of infinite bandwidth\n"
+            )
+        else:
+            print(
+                "\n[INFO] : Network communication "
+                "overhead is enabled\n"
+            )
+
+    def build_environment(self):
+        self.environments = {}
+
+        for scheduler in self.schedulers:
+            farm = copy.deepcopy(
+                self.infrastructure
+            )
+
+            farm.set_power_model(
+                self.power_model
+            )
+
+            job_copy = copy.deepcopy(
+                self.evaluation
+                if self.evaluation is not None
+                else self.jobs
+            )
+
+            if isinstance(
+                scheduler,
+                Scheduler,
+            ):
+                self.environments[
+                    scheduler
+                ] = Environment(
+                    server_farm=farm,
+                    metrics_manager=MetricsManager(
+                        farm,
+                        jobs=job_copy,
+                    ),
+                    job_manager=JobManager(
+                        jobs=job_copy
+                    ),
+                    scheduler=scheduler,
+                    time_step=self.time_step,
+                    network_manager=NetworkManager(
+                        server_farm=farm
+                    ),
+                    network_overhead=(
+                        self.network_overhead_enabled
+                    ),
+                    batch_size=self.batch_size
+                )
+
+            elif isinstance(
+                scheduler,
+                Agent,
+            ):
+                self.environments[
+                    scheduler
+                ] = CloudEnv(
+                    jobs=self.jobs,
+                    server_farm=farm,
+                    agent=scheduler,
+                    network_overhead=(
+                        self.network_overhead_enabled
+                    ),
+                    time_step=self.time_step,
+                    evaluation=job_copy,
+                    batch_size=self.batch_size
+                )
+
+    def run_experiment(self):
+        for scheduler in self.schedulers:
+            print(
+                f"{scheduler.name} : "
+                "SCHEDULING - STARTS"
+            )
+
+            if isinstance(
+                scheduler,
+                Scheduler,
+            ):
+                self.results[
+                    scheduler
+                ] = self.environments[
+                    scheduler
+                ].run()
+
+                continue
+
+            if not isinstance(
+                scheduler,
+                Agent,
+            ):
+                continue
+
+            env = self.environments[scheduler]
+
+            if scheduler.trainable:
+                total_episodes = self.episodes
+            else:
+                total_episodes = 0
+
+            episode = 0
+
+            while episode <= total_episodes:
+                try:
+                    if scheduler.trainable:
+                        if episode == total_episodes:
+                            env.mode = "TEST"
+                            scheduler.epsilon = 0.0
+                        elif episode > 0:
+                            scheduler.decay_epsilon()
+                    else:
+                        env.mode = "TEST"
+
+                    env.reset(
+                        episode=episode
+                    )
+
+                    done = False
+
+                    while not done:
+                        if env.is_scheduling_time():
+                            state = env.get_state()
+
+                            scheduler.observe(
+                                state
+                            )
+
+                            action = (
+                                scheduler.take_action()
+                            )
+
+                            done = env.step(
+                                action
+                            )
+
+                            while (
+                                not env.is_scheduling_time()
+                                and not done
+                            ):
+                                done = env.step_ahead()
+
+                            next_state = (
+                                env.get_state()
+                            )
+
+                            reward = (
+                                env.get_reward(
+                                    action
+                                )
+                            )
+
+                            if (
+                                scheduler.trainable
+                                and env.mode
+                                == "TRAIN"
+                            ):
+                                scheduler.update(
+                                    action,
+                                    reward,
+                                    next_state,
+                                    done,
+                                )
+                        else:
+                            done = (
+                                env.step_ahead()
+                            )
+
+                    if scheduler.trainable:
+                        rewards = (
+                            env.reward_buffer
                         )
-            self.scenarios_edges.append(last_arrived)
-            
-            self.evaluation = evaluation
-            
-            if not self.network_overhead_enabled :
-                print("\n[INFO] : Network communication overhead is disabled\n"
-                      "The experiment is under the assumption of infinite bandwidth\n")
-            else :
-                print("\n[INFO] : Network communication overhead is enabled\n")        
-            
-                
-        def build_environment(self):
-            
-            for scheduler in self.schedulers :
 
-                farm = copy.deepcopy(self.infrastructure)
-                
-                farm.set_power_model(self.power_model)
+                        mean_reward = (
+                            float(
+                                np.mean(rewards)
+                            )
+                            if rewards
+                            else 0.0
+                        )
 
-                job_copy = copy.deepcopy(self.jobs)
-                
-                if isinstance(scheduler, Scheduler):
-                    self.environments[scheduler] = Environment(
-                                                        server_farm=farm,
-                                                        metrics_manager=MetricsManager(
-                                                            farm,
-                                                            jobs=job_copy
-                                                        ),
-                                                        job_manager=JobManager(
-                                                            jobs=job_copy
-                                                        ),
-                                                        scheduler=scheduler,
-                                                        time_step=self.time_step,
-                                                        network_manager =  NetworkManager(server_farm=farm),
-                                                        network_overhead = self.network_overhead_enabled
-                                                    )
-                if isinstance(scheduler, Agent):
-                    self.environments[scheduler] =  CloudEnv(
-                                    server_farm=farm,
-                                    metrics_manager=MetricsManager(server_farm=farm, jobs=job_copy),
-                                    job_manager=JobManager(jobs=job_copy),
-                                    agent=scheduler,
-                                    network_manager= NetworkManager(server_farm=farm),
-                                    network_overhead= self.network_overhead_enabled,
-                                    time_step= self.time_step,
-                                    evaluation = self.evaluation
-                                )
-        
-        def run_experiment(self):
-            for scheduler in self.schedulers :
-                print(f"{scheduler.name} : SCHEDULING - STARTS")
-                if isinstance(scheduler, Scheduler):
-                    self.results[scheduler] = self.environments[scheduler].run()
-                if isinstance(scheduler, Agent):
-                    env = self.environments[scheduler]
-                    episodes = 0
-                    if scheduler.trainable :
-                        episodes = 10
-                    for episode in range(episodes+1):
-                        if episode == episodes:
-                            env.mod = 'TEST'
-                        env.reward_buffer = []
-                        state, _ = env.reset(episode = episode)
-                        done = False
-                        while not done:
-                            #if env.is_scheduling_time():
-                                state, _ = env.get_state()
-                                scheduler.observe(
-                                    state
-                                )
-                                action = scheduler.take_action()
-                                next_state, reward, done = env.step(action)
-                                if scheduler.trainable :
-                                    next_state = np.array(next_state, dtype=np.float32)
-                                    scheduler.update(
-                                        action,
-                                        reward,
-                                        next_state,
-                                        done
-                                    )
-                            #else:
-                            #    env.step_ahead()
-                        if scheduler.trainable:
-                            print(f"{env.mod = }, {episode = }, MEAN CPU STD : {-round(float(np.mean(env.reward_buffer)), ndigits= 5)}")
-                            scheduler.epsilon = max(0.05, scheduler.epsilon*0.95)
-                    self.results[scheduler]  = env.get_results()
-                    env.log()
-        
-        
-        def plot_results(self) :
-            results = list(self.results.values())
-            plot_metrics(results_list = results, scenarios_edges = self.scenarios_edges)
+                        total_reward = (
+                            float(
+                                np.sum(rewards)
+                            )
+                            if rewards
+                            else 0.0
+                        )
+
+                        print(
+                            f"{env.mode = }, "
+                            f"{episode = }/"
+                            f"{self.episodes}, "
+                            f"TOTAL REWARD : "
+                            f"{total_reward:.5f}, "
+                            f"MEAN REWARD : "
+                            f"{mean_reward:.5f},\n"
+                            f"LENGTH REWARD : "
+                            f"{len(rewards)}, "
+                            f"EPSILON : "
+                            f"{scheduler.epsilon:.5f}, "
+                            f"BUFFER LENGTH : "
+                            f"{len(scheduler.buffer)}"
+                        )
+
+                    episode += 1
+
+                except KeyboardInterrupt:
+                    print(
+                        "TRAINING INTERRUPTED — "
+                        "TESTING THE LAST TRAINED MODEL"
+                    )
+
+                    episode = total_episodes
+
+            self.results[
+                scheduler
+            ] = env.get_results()
+
+            env.log()
+
+    def plot_results(self):
+        results = list(
+            self.results.values()
+        )
+
+        plot_metrics(
+            results_list=results,
+            scenarios_edges=self.scenarios_edges,
+        )

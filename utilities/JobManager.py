@@ -14,6 +14,12 @@ class JobManager:
         self.pending_tasks = 0
         self.finished_jobs = []
         self.index = 0
+    
+    
+    def get_remaining_tasks(self):
+        all_tasks = len([tsk for job in self.jobs for tsk in job.tsk.values()])
+        finished_tasks = len([tsk for job in self.finished_jobs for tsk in job.tsk.values()])
+        return 
 
 
 
@@ -27,8 +33,8 @@ class JobManager:
                     self.workload = False
                     break
                 self.index +=1
-
-        self.arrived_jobs.extend(out_jobs)
+        if out_jobs :
+            self.arrived_jobs.extend(out_jobs)
        
 
 

@@ -1,5 +1,6 @@
 import numpy as np
 import igraph as ig
+import random
 try :
     from classes.TaskClass import Task
 except ModuleNotFoundError: 
@@ -148,21 +149,18 @@ class Job:
     
     
     @staticmethod
-    def generate_jobs(num_jobs, num_tasks_per_job=4,
+    def generate_jobs(num_jobs, 
+                      num_tasks_per_job=4,
+                      cpu_req_per_task = [12, 64],
+                      ram_req_per_task = [2, 32],
+                      task_size = [32, 128],
                       time_arrived = [], edge_probability = 0.5,
                       instructions_per_task = [250e6, 1e9],
-                      data_transfer_range = [512, 1024]):
-        """
-        Generate multiple jobs with random parameters.
+                      data_transfer_range = [512, 1024],
+                      seed = 123):
         
-        Args:
-            num_jobs: number of jobs to create
-            num_tasks_per_job: tasks per job (default 4)
-        
-        Returns:
-            list of Job objects
-        """
-        
+        rng = random.Random(seed)
+
         if time_arrived is not None :
             assert len(time_arrived) == num_jobs, \
                 "[INVALID INPUT] : Arrival times does not macth the jobs number."
@@ -171,10 +169,10 @@ class Job:
         for job_id in range(num_jobs):
             
             # Random task parameters
-            cpu_req = [round(np.random.uniform(12, 64), 0) for _ in range(num_tasks_per_job)]
-            ram_req = [round(np.random.uniform(2, 32), 0) for _ in range(num_tasks_per_job)]
-            instructions = [round(np.random.uniform(min(instructions_per_task),max(instructions_per_task)), 0) for _ in range(num_tasks_per_job)]
-            sizes = [round(np.random.uniform(32, 128), 0) for _ in range(num_tasks_per_job)]
+            cpu_req = [round(rng.uniform(min(cpu_req_per_task), max(cpu_req_per_task)), 0) for _ in range(num_tasks_per_job)]
+            ram_req = [round(rng.uniform(min(ram_req_per_task), max(ram_req_per_task)), 0) for _ in range(num_tasks_per_job)]
+            instructions = [round(rng.uniform(min(instructions_per_task),max(instructions_per_task)), 0) for _ in range(num_tasks_per_job)]
+            sizes = [round(rng.uniform(min(task_size), max(task_size)), 0) for _ in range(num_tasks_per_job)]
             
             min_data = min(data_transfer_range)
             max_data = max(data_transfer_range)
@@ -182,8 +180,8 @@ class Job:
             data_transfer_weights = {}
             for i in range(num_tasks_per_job - 1):
                 for j in range(i + 1, num_tasks_per_job):
-                    if np.random.random() < edge_probability:  # chance of edge
-                        weight = np.random.randint(min_data,max_data)
+                    if rng.random() < edge_probability:  # chance of edge
+                        weight = rng.randint(min_data,max_data)
                         data_transfer_weights[(i, j)] = weight
             
             job = Job().spawn_job(
@@ -400,4 +398,170 @@ class Job:
 
 
         return max(earliest_finish.values())/_compute_power_refrence
+
+
+def generate_workload(seed =  123,
+                      num_jobs = 30,
+                      mean_job_gap = 0.01,
+                      num_tasks_per_job = 5,
+                      cpu_req_per_task = [12, 64],
+                      ram_req_per_task = [2, 32],
+                      task_size = [32, 128],
+                      edge_probability = 0.25,
+                      instructions_per_task = [250e5, 500e5],
+                      data_transfer_range = [512, 1024],
+                    )->tuple[list[Job],list[float]]:
+    """
+
+    ## Overview
+
+    Generate a random workload using exponentially distributed job
+    inter-arrival times.
+
+    The workload can represent either a single traffic pattern or multiple
+    consecutive workload scenarios (e.g., light, medium, and surge). When
+    `num_jobs` and `mean_job_gap` are provided as lists, each pair of
+    values defines one scenario.
+
+    ## Args
+
+    * `seed` (int):
+    Random seed used to make workload generation reproducible.
+    Default: 123.
+
+    * `num_jobs` (int | list[int]):
+    Number of jobs to generate. If a list is provided, each element
+    specifies the number of jobs in one consecutive workload scenario.
+    Default: 30.
+
+    * `mean_job_gap` (float | list[float]):
+    Mean inter-arrival time between consecutive jobs. If a list is
+    provided, each element corresponds to one scenario in
+    `num_jobs`. Default: 0.01.
+
+    * `num_tasks_per_job` (int):
+    Number of tasks generated for each job. Default: 5.
+    
+    * `cpu_req_per_task` (list[float | int]):
+    Two-element range `[min, max]` defining the possible amount of
+    cpu requirement for each task. Default : [12, 64].
+    
+    * `ram_req_per_task` (list[float | int]):
+    Two-element range `[min, max]` defining the possible amount of
+    ram requirement for each task. Default : [2, 32].
+
+    * `task_size` (list[float | int]):
+    Two-element range `[min, max]` defining the possible size of each task. Default : [32, 128].
+
+    * `edge_probability` (float):
+    Probability of creating a dependency (edge) between eligible
+    tasks within a job. Higher values generally produce denser
+    task-dependency graphs. Default: 0.25.
+
+    * `instructions_per_task` (list[float | int]):
+    Two-element range `[min, max]` defining the possible number of
+    instructions assigned to each task.
+
+    * `data_transfer_range` (list[float | int]):
+    Two-element range `[min, max]` defining the possible amount of
+    data transferred between dependent tasks.
+
+    ## Returns
+
+    * `tuple`:
+    A tuple `(jobs, scenarios_edges)` where:
+
+    * `jobs` is the generated workload, containing the jobs and
+        their corresponding arrival times.
+    * `scenarios_edges` contains the dependency/edge information
+        generated for the workload scenarios.
+
+    ## Raises
+
+    * `AssertionError`:
+    If `num_jobs` and `mean_job_gap` are provided as lists with
+    different lengths.
+
+    ## Examples
+
+    ### Single Workload Scenario
+
+    ```python
+    jobs, scenarios_edges = generate_workload(
+        seed=123,
+        num_jobs=30,
+        mean_job_gap=0.01,
+        num_tasks_per_job=5,
+        edge_probability=0.25,
+        instructions_per_task=[250e5, 500e5],
+        data_transfer_range=[512, 1024],
+    )
+    ```
+
+    ### Multiple Workload Scenarios
+
+    ```python
+    jobs, scenarios_edges = generate_workload(
+        seed=123,
+        num_jobs=[30, 12],
+        mean_job_gap=[0.05, 0.01],
+        num_tasks_per_job=5,
+        edge_probability=0.25,
+        instructions_per_task=[250e5, 500e5],
+        data_transfer_range=[512, 1024],
+    )
+    ```
+
+    In the second example, the workload consists of two consecutive
+    scenarios:
+
+    * **Scenario 1:** 30 jobs with a mean inter-arrival time of 0.05.
+    * **Scenario 2:** 12 jobs with a mean inter-arrival time of 0.01.
+
+    The arrival times of the second scenario continue from the end of
+    the first scenario rather than restarting from zero.
+
+    ## Notes
+
+    `num_jobs` and `mean_job_gap` must either both be scalars or both
+    be lists of the same length when multiple scenarios are used.
+    """
+
+
+    if isinstance(num_jobs, int):
+            num_jobs = [num_jobs]
+    if isinstance(mean_job_gap, float):
+                mean_job_gap = [mean_job_gap]
+            
+    assert len(num_jobs) == len(mean_job_gap),\
+        "Input mismatch !"
+        
+    time_rng = np.random.default_rng(seed= seed)
+    scenario_edges = []
+    times = []
+    offset = 0
+    for idx, gap in enumerate(mean_job_gap):
+        gaps = np.array([round( t , ndigits = 5) for t in time_rng.exponential(gap, num_jobs[idx])])
+        arrivals  = np.cumsum(gaps) + offset
+        offset = arrivals[-1]
+        times.append(arrivals)
+        scenario_edges.append(max(arrivals))
+
+    arrival_times = np.concatenate(times)
+
+    jobs = Job.generate_jobs(
+        num_jobs=sum(num_jobs), 
+        num_tasks_per_job=num_tasks_per_job,
+        cpu_req_per_task = cpu_req_per_task,
+        ram_req_per_task=ram_req_per_task,
+        task_size=task_size,
+        time_arrived=arrival_times,
+        edge_probability= edge_probability,
+        instructions_per_task = instructions_per_task,
+        data_transfer_range = data_transfer_range,
+        seed=seed
+    )
+    
+    return jobs, scenario_edges
+
 

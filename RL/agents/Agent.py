@@ -5,7 +5,9 @@ class Agent(ABC):
         self.action_space = None
         self.name = name
         self.full_name = full_name
+        self.num_servers = None
         self.trainable = True
+        self.built = False
     
     @abstractmethod
     def take_action(self):

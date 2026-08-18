@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
 import math
-from sympy import symbols, Eq, solve, lambdify
+from sympy import symbols, lambdify
 from sympy.parsing.sympy_parser import parse_expr
+
+
 
 def plot_job_dags(jobs_list, figsize=(20, 5)):
     """Plot DAGs with hierarchical layout."""
@@ -324,4 +326,3 @@ def parse_power_equation(expression_str):
     parsed_expr = parse_expr(expression_str)
     
     return lambdify([CPU, RAM, STORAGE], parsed_expr, modules="math")
-    

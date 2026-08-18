@@ -93,3 +93,14 @@ class Vm:
 
         return True
     
+    
+    
+    
+    
+    
+    def print_details(self):
+        print("CPU : ", self.cpu)
+        print("RAM : ", self.ram)
+        print("USED CPU : ", self.used_cpu)
+        print("USED RAM : ", self.used_ram)
+        

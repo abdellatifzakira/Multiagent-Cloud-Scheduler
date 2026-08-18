@@ -1,133 +1,151 @@
-from classes.JobClass import Job
-from classes.ServerFarmClass import Server_Farm
+# main.py
+
 from utilities.DAG_handlers import *
+from classes.JobClass import generate_workload
 from baselines.RoundRobin import RoundRobinScheduler
 from comparison.LeastLoaded import LeastLoadedScheduler
 from comparison.LeastCommunication import DataLocalityAwareScheduler
 from comparison.LeastEnergy import EnergyAwareScheduler
-import numpy as np
-import random
 from utilities.helpers import *
 from ExperimentRunner import Experiment
-from environment.NetworkManager import NetworkManager
-from RL.agents.RandomAgent import RandomAgent
-from RL.agents.DQNAgent import DQNAgent 
+
 import time
 
-# REPRODUCIBILITY
+from RL.agents.RandomAgent import RandomAgent
+from RL.agents.DQNAgent import DQNAgent
+from classes.ServerFarmClass import (
+    build_random_server_farms,
+)
+
+
 global_seed = 123
-random.seed(global_seed)
-np.random.seed(global_seed)
-
-#WORKLOAD
-num_jobs = 450
-mean_job_gap = 0.01
-num_tasks_per_job = 5
-jobs_per_phase = num_jobs // 3
-edge_probability =  0.25 # controls how fuzzy the jobs are
-
-# Light
-light_gap = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap*10, jobs_per_phase)])
-arrival_light = np.cumsum(light_gap)
-# Medium
-medium_gap = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap*4, jobs_per_phase)])
-arrival_medium = np.cumsum(medium_gap) + arrival_light[-1] 
-# Surge
-surge_gap = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap, jobs_per_phase)])
-arrival_surge = np.cumsum(surge_gap) + arrival_medium[-1] 
-
-arrival_times = np.concatenate([
-    arrival_light,
-    arrival_medium,
-    arrival_surge
-])
+test_seed = 256
 
 
-jobs = Job.generate_jobs(
-    num_jobs=num_jobs, 
-    num_tasks_per_job=num_tasks_per_job,
-    time_arrived=arrival_times,
-    edge_probability= edge_probability,
-    instructions_per_task = [250e5, 500e5],
-    data_transfer_range = [512, 1024]
+jobs, _ = generate_workload(
+    seed=global_seed,
+    num_jobs=[100, 100, 50],
+    mean_job_gap=[0.075, 0.05, 0.01],
+    num_tasks_per_job=5,
+    cpu_req_per_task=[12, 64],
+    ram_req_per_task=[2, 32],
+    task_size=[32, 64],
+    edge_probability=0.0,
+    instructions_per_task=[
+        250e5,
+        500e5,
+    ],
+    data_transfer_range=[
+        512,
+        1024,
+    ],
 )
 
-# Light
-light_gap_test = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap*10, jobs_per_phase)])
-arrival_light_test = np.cumsum(light_gap_test)
-# Medium
-medium_gap_test = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap*4, jobs_per_phase)])
-arrival_medium_test = np.cumsum(medium_gap_test) + arrival_light_test[-1] 
-# Surge
-surge_gap_test = np.array([round( t , ndigits = 5) for t in np.random.exponential(mean_job_gap, jobs_per_phase)])
-arrival_surge_test = np.cumsum(surge_gap_test) + arrival_medium_test[-1] 
 
-arrival_times_test = np.concatenate([
-    arrival_light_test,
-    arrival_medium_test,
-    arrival_surge_test
-])
-
-
-jobs_test = Job.generate_jobs(
-    num_jobs=num_jobs, 
-    num_tasks_per_job=num_tasks_per_job,
-    time_arrived=arrival_times_test,
-    edge_probability= edge_probability,
-    instructions_per_task = [250e5, 500e5],
-    data_transfer_range = [512, 1024]
+jobs_test, scenarios = generate_workload(
+    seed=test_seed,
+    num_jobs=[100, 100, 50],
+    mean_job_gap=[0.075, 0.05, 0.01],
+    num_tasks_per_job=5,
+    cpu_req_per_task=[12, 64],
+    ram_req_per_task=[2, 32],
+    task_size=[32, 64],
+    edge_probability=0.0,
+    instructions_per_task=[
+        250e5,
+        500e5,
+    ],
+    data_transfer_range=[
+        512,
+        1024,
+    ],
 )
 
-plot_job_dags(jobs_list = jobs)
+
+plot_job_dags(
+    jobs_list=jobs_test
+)
 
 
-print("===================================================")
+print("=" * 51)
 print("BEFORE RUN CHECK")
-print(f"ALL TASKS {len([tsk for job in jobs for tsk in job.tasks.values()])}")
-print(f"TASK STATES {set([tsk.status for job in jobs for tsk in job.tasks.values()])} : EXPECTED {1, 3}")
-print("===================================================")
 
-server_farm = Server_Farm().build_random_server_farms(
-    cpu_range = [1024, 2048],
-    ram_range = [4096, 4096*4],
-    storage_range = [4096, 20000],
-    compute_power_range= [1e9, 2e9],
-    max_vms_count = 5,
-    alphas = [100, 500],
-    betas = [2, 5],
-    server_count = 4,
-    virtual_allocation= [0.9, 0.95],
-    bandwidth=[4096, 16384],
-    mode = 'LEAST_LOADED'
+print(
+    f"ALL TASKS "
+    f"{len([task for job in jobs for task in job.tasks.values()])}"
 )
 
-plot_server_network(farm= server_farm)
+print(
+    "TASK STATES "
+    f"{set(task.status for job in jobs for task in job.tasks.values())} "
+    " : EXPECTED {1, 3}"
+)
+
+print("=" * 51)
+
+
+server_farm = build_random_server_farms(
+    cpu_range=[1024, 1024 * 2],
+    ram_range=[4096, 4096 * 4],
+    storage_range=[20480, 20480 * 2],
+    compute_power_range=[
+        1e9,
+        2e9,
+    ],
+    max_vms_count=5,
+    alphas=[100, 500],
+    betas=[2, 5],
+    server_count=4,
+    virtual_allocation=[
+        0.9,
+        0.95,
+    ],
+    bandwidth=[
+        4096.0,
+        16384.0,
+    ],
+    mode="EXECUTION_TIME",
+    seed=global_seed,
+)
+
+
+plot_server_network(
+    farm=server_farm
+)
 
 
 exp = Experiment(
-                infrastructure = server_farm,
-                jobs  = jobs,
-                scenarios_edges = [min(arrival_medium), min(arrival_surge)],
-                schedulers  = [
-                                RoundRobinScheduler(),
-                                #LeastLoadedScheduler(mode='QUEUE'),
-                                LeastLoadedScheduler(mode='CPU'),
-                                DataLocalityAwareScheduler(mode='HYBRID'),
-                                DataLocalityAwareScheduler(mode='NAIVE'),
-                                EnergyAwareScheduler(),
-                                RandomAgent(seed= global_seed),
-                                DQNAgent()
-                            ],
-                time_step = 0.005,
-                network_overhead_enabled = True,
-                power_model = 'DEFAULT',
-                evaluation = jobs_test
-                
-                )
+    infrastructure=server_farm,
+    jobs=jobs,
+    scenarios_edges=scenarios,
+    schedulers=[
+        DQNAgent(
+            epsilon=0.5,
+            epsilon_decay=0.95,
+            seed=global_seed),
+        LeastLoadedScheduler(mode='CPU'),
+        RandomAgent(seed=global_seed)
+        
+    ],
+    time_step=0.005,
+    network_overhead_enabled=True,
+    power_model="DEFAULT",
+    evaluation=jobs_test,
+    episodes=10,
+    batch_size=4
+)
+
 
 exp.build_environment()
-t = time.time()
+
+start_time = time.time()
+
 exp.run_experiment()
-print("="*50)
-print(f"EXPERIMENT RAN FOR : {round(time.time() - t, ndigits=2)} s")
+
+print("=" * 50)
+print(
+    "EXPERIMENT RAN FOR : "
+    f"{time.time() - start_time:.2f} s"
+)
+
 exp.plot_results()

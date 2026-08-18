@@ -313,10 +313,6 @@ class Server:
     
     
     def get_power_consumption(self):
-        if self.power_model == 'DEFAULT' :
-            cpu_utilization = self.cpu_utilization()
-            return  round((cpu_utilization**self.beta)*self.alpha + self.static_power, ndigits=3)
-        else :
             CPU = self.cpu_utilization()
             RAM = self.ram_utilization()
             STORAGE = self.storage_utilization()
@@ -362,3 +358,6 @@ class Server:
         for vm in self.vms.values():
             if vm.hosted_task is not {}:
                 vm.time_step_tasks(_t, time_step)
+    
+    def get_max_power_consumption(self):
+        return self.power_function(cpu=1.0, ram= 1.0, storage=1.0)

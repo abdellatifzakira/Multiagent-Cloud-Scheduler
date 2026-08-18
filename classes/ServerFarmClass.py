@@ -119,7 +119,8 @@ class Server_Farm:
                                 power_price = 0.1,
                                 virtual_allocation = [0.85, 0.9],
                                 bandwidth = [1024*4, 4096*4],
-                                mode = 'ROUNDROBIN'
+                                mode = 'ROUNDROBIN',
+                                seed = 123
                                 ):
         
         assert mode in ['ROUNDROBIN', 'LEAST_LOADED', 'EXECUTION_TIME', 'COLLABORATIVE'], \
@@ -133,27 +134,29 @@ class Server_Farm:
         
         assert max_vms_count >= 2, \
             "Invalid simulation parameters: vm count must be at least 2"
-        assert min(cpu_range) / max_vms_count >= 32, \
+        assert min(cpu_range)*max(virtual_allocation) / max_vms_count >= 64, \
             f"Invalid simulation parameters: each VM may receive only {int(min(cpu_range) / max_vms_count)} CPU units. " \
-            "For reliable simulation results, ensure at least 16 CPU units per VM.\n" \
+            "For reliable simulation results, ensure at least 64 CPU units per VM.\n" \
             "Consider reducing max_vms_count or increasing the minimum CPU value in cpu_range."
 
-        assert min(ram_range) / max_vms_count >= 128, \
+        assert min(ram_range)*max(virtual_allocation) / max_vms_count >= 128, \
             f"Invalid simulation parameters: each VM may receive only {int(min(ram_range) / max_vms_count)} RAM units. " \
             "For reliable simulation results, ensure at least 128 RAM units per VM.\n" \
             "Consider reducing max_vms_count or increasing the minimum RAM value in ram_range."
         
-        c_cpu = [round(np.random.uniform(low= min(cpu_range), high=max(cpu_range)),ndigits = 0) for _ in range(server_count)]
-        c_ram = [round(np.random.uniform(low= min(ram_range), high=max(ram_range)),ndigits = 0) for _ in range(server_count)]
-        c_storage = [round(np.random.uniform(low= min(storage_range), high=max(storage_range)),ndigits = 0) for _ in range(server_count)]
-        c_compute_power = [round(np.random.uniform(low= min(compute_power_range), high=max(compute_power_range)),ndigits = 0) for _ in range(server_count)]
-        alpha = [round(np.random.uniform(low= min(alphas), high=max(alphas)),ndigits = 2) for _ in range(server_count)]
-        beta = [round(np.random.uniform(low= min(betas), high=max(betas)),ndigits = 2) for _ in range(server_count)]
+        rng = random.Random(seed)
+        
+        c_cpu = [round(rng.uniform(min(cpu_range),max(cpu_range)),ndigits = 0) for _ in range(server_count)]
+        c_ram = [round(rng.uniform(min(ram_range),max(ram_range)),ndigits = 0) for _ in range(server_count)]
+        c_storage = [round(rng.uniform(min(storage_range),max(storage_range)),ndigits = 0) for _ in range(server_count)]
+        c_compute_power = [round(rng.uniform(min(compute_power_range), max(compute_power_range)),ndigits = 0) for _ in range(server_count)]
+        alpha = [round(rng.uniform(min(alphas), max(alphas)),ndigits = 2) for _ in range(server_count)]
+        beta = [round(rng.uniform(min(betas),max(betas)),ndigits = 2) for _ in range(server_count)]
         #beta = [1 for _ in range(server_count)] # linear power consumption across all servers
         server_list = []
         for _ in range(server_count):
             
-            virtual_quota = round(np.random.uniform(low= min(virtual_allocation), high=max(virtual_allocation)),ndigits = 3)
+            virtual_quota = round(rng.uniform(min(virtual_allocation),max(virtual_allocation)),ndigits = 3)
 
             server = Server(
                 id= _,
@@ -169,7 +172,7 @@ class Server_Farm:
             
 
 
-            vm_count = random.choice(range(2, max_vms_count + 1))
+            vm_count = rng.choice(range(2, max_vms_count + 1))
 
             vm_cpu = []
             vm_ram = []
@@ -179,7 +182,7 @@ class Server_Farm:
             remaining_ram = c_ram[_]*virtual_quota
             remaining_compute = c_compute_power[_]*virtual_quota
 
-            min_cpu = 32
+            min_cpu = 64
             min_ram = 128
             min_compute = 25e6
 
@@ -197,9 +200,9 @@ class Server_Farm:
                     max_ram = remaining_ram - (remaining_vms - 1) * min_ram
                     max_compute = remaining_compute - (remaining_vms - 1) * min_compute
                     
-                    cpu = round(np.random.uniform(min_cpu, max_cpu))
-                    ram = round(np.random.uniform(min_ram, max_ram))
-                    compute = round(np.random.uniform(min_compute, max_compute))
+                    cpu = round(rng.uniform(min_cpu, max_cpu))
+                    ram = round(rng.uniform(min_ram, max_ram))
+                    compute = round(rng.uniform(min_compute, max_compute))
                 vm_cpu.append(cpu)
                 vm_ram.append(ram)
                 vm_compute.append(compute)
@@ -222,7 +225,7 @@ class Server_Farm:
         bandwidths = {}
         for i in range(len(server_list)):
             for j in range(i+1, len(server_list)):
-                    weight = np.random.randint(min(bandwidth), max(bandwidth))
+                    weight = rng.randint(int(min(bandwidth)), int(max(bandwidth)))
                     bandwidths[(i, j)] = weight
         
         
@@ -251,5 +254,160 @@ class Server_Farm:
             if server.has_data() :
                 packets.append(server.send_data())
         return packets
+
+def build_random_server_farms(
+                                cpu_range = [1024, 2048],
+                                ram_range = [4096, 4096*4],
+                                storage_range = [4096, 20000],
+                                compute_power_range= [1e9, 2e9],
+                                max_vms_count = 5,
+                                alphas = [100, 500],
+                                betas = [2, 5],
+                                server_count = 4,
+                                virtual_allocation= [0.9, 0.95],
+                                bandwidth=[4096, 16384],
+                                mode = 'LEAST_LOADED',
+                                seed = 123
+                            ):
+    
+    """
+
+    ## Overview
+
+    Generate a random server farm using configurable ranges for server
+    resources, virtual-machine allocation, compute power, power-model
+    parameters, and network bandwidth.
+
+    Each server is randomly configured within the provided resource ranges.
+    The resulting server farm can be used to simulate different cloud
+    infrastructure configurations and scheduling scenarios.
+
+    ## Args
+
+    * `cpu_range` (list[int | float]):
+    Two-element range `[min, max]` defining the CPU capacity of each
+    server. Default: `[1024, 2048]`.
+
+    * `ram_range` (list[int | float]):
+    Two-element range `[min, max]` defining the RAM capacity of each
+    server. Default: `[4096, 4096 * 4]`.
+
+    * `storage_range` (list[int | float]):
+    Two-element range `[min, max]` defining the storage capacity of
+    each server. Default: `[4096, 20000]`.
+
+    * `compute_power_range` (list[int | float]):
+    Two-element range `[min, max]` defining the compute power of each
+    server. Default: `[1e9, 2e9]`.
+
+    * `max_vms_count` (int):
+    Maximum number of virtual machines that can be allocated to each
+    server. Default: 5.
+
+    * `alphas` (list[int | float]):
+    Two-element range `[min, max]` used to randomly select the
+    `alpha` parameter of the default dynamic power model.
+
+    * `betas` (list[int | float]):
+    Two-element range `[min, max]` used to randomly select the
+    `beta` parameter of the default dynamic power model.
+
+    The dynamic power component is modeled as:
+
+    `P_dynamic = alpha * CPU^beta`
+
+    together with the configured static power component.
+
+    * `server_count` (int):
+    Number of servers to generate. Default: 4.
+
+    * `virtual_allocation` (list[float]):
+    Two-element range `[min, max]` defining the virtual resource
+    allocation factor for each server. Default: `[0.9, 0.95]`.
+
+    * `bandwidth` (list[int | float]):
+    Two-element range `[min, max]` defining the network bandwidth
+    between server pairs. Default: `[4096, 16384]`.
+
+    * `mode` (str):
+    Server internal policy to select vms.
+    Supported modes include:
+
+    * `'ROUNDROBIN'`: distributes tasks on vms using a round-robin
+        strategy.
+    * `'LEAST_LOADED'`: favors the least-loaded vm.
+    * `'EXECUTION_TIME'`: selects vms according to execution-time
+        considerations.
+
+    Default: `'LEAST_LOADED'`.
+
+    * `seed` (int):
+    Random seed used to make the generated server farm reproducible.
+    Using the same seed and configuration produces the same random
+    infrastructure configuration. Default: 123.
+
+    ## Returns
+
+    * `Server_Farm`:
+    A randomly generated server farm containing the configured servers,
+    their resources, virtual machines, power-model parameters, and
+    network connections.
+
+    ## Notes
+
+    * Each resource range should contain exactly two values representing
+    its minimum and maximum bounds.
+    * The generated infrastructure is random but reproducible when the
+    same `seed` is used.
+    * Changing the seed produces a different server-farm configuration
+    while preserving the specified resource ranges.
+    * The `mode` parameter controls how the server farm handles resource
+    or VM allocation; it does not change the randomly generated resource
+    ranges themselves.
+
+    ## Example
+
+    Generate a reproducible server farm with four servers:
+
+    ```python
+    server_farm = build_random_server_farms(
+        cpu_range=[1024, 2048],
+        ram_range=[4096, 4096 * 4],
+        storage_range=[4096, 20000],
+        compute_power_range=[1e9, 2e9],
+        max_vms_count=5,
+        alphas=[100, 500],
+        betas=[2, 5],
+        server_count=4,
+        virtual_allocation=[0.9, 0.95],
+        bandwidth=[4096, 16384],
+        mode='LEAST_LOADED',
+        seed=123,
+    )
+    ```
+
+    Using `seed=123` again with the same parameters will generate the
+    same random server-farm configuration.
+    """
+
+    farm = Server_Farm().build_random_server_farms(
+                            cpu_range = cpu_range,
+                            ram_range = ram_range,
+                            storage_range = storage_range,
+                            compute_power_range= compute_power_range,
+                            max_vms_count = max_vms_count,
+                            alphas = alphas,
+                            betas = betas,
+                            server_count = server_count,
+                            virtual_allocation= virtual_allocation,
+                            bandwidth= bandwidth,
+                            mode = mode,
+                            seed = seed
+                        )
+    
+    return farm
+
+
+
                 
                 
