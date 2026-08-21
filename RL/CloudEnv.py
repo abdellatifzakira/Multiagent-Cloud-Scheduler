@@ -10,14 +10,6 @@ from environment.MetricsManager import MetricsManager
 from environment.NetworkManager import NetworkManager
 
 
-try:
-    from Reward import Reward
-except ModuleNotFoundError:
-    try:
-        from RL.Reward import Reward
-    except ModuleNotFoundError:
-        Reward = None
-
 
 class CloudEnv(gym.Env):
     def __init__(
@@ -29,6 +21,7 @@ class CloudEnv(gym.Env):
         evaluation=None,
         agent=None,
         batch_size = 4,
+        clamp_results = False,
     ):
         super().__init__()
 
@@ -38,6 +31,7 @@ class CloudEnv(gym.Env):
         self.network_manager = None
 
         self.agent = agent
+        self.clamp_results = clamp_results
 
         self.network_overhead = (
             network_overhead
@@ -89,6 +83,8 @@ class CloudEnv(gym.Env):
 
         self._decision_tasks = []
         self._decision_actions = None
+        
+        self.reward_history = []
 
     def is_running(self):
         """
@@ -466,7 +462,9 @@ class CloudEnv(gym.Env):
         print("=" * 50)
 
     def get_results(self):
-        if self.draining_time is not None:
+        if self.agent.trainable :
+            self.metrics_manager.results['REWARD'] = self.reward_history
+        if self.draining_time is not None and self.clamp_results:
             self.metrics_manager.clamp_results(
                 critical_time=self.draining_time
             )

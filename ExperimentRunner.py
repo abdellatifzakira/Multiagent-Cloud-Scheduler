@@ -26,6 +26,7 @@ class Experiment:
         evaluation=None,
         episodes=10,
         batch_size = 4,
+        clamp_results = False
     ):
         self.infrastructure = infrastructure
         self.jobs = jobs or []
@@ -33,6 +34,7 @@ class Experiment:
             scenarios_edges or []
         )
         self.schedulers = schedulers or []
+        self.clamp_results = clamp_results
 
         self.time_step = time_step
         self.power_model = power_model
@@ -102,7 +104,8 @@ class Experiment:
                     network_overhead=(
                         self.network_overhead_enabled
                     ),
-                    batch_size=self.batch_size
+                    batch_size=self.batch_size,
+                    clamp_results=self.clamp_results
                 )
 
             elif isinstance(
@@ -120,7 +123,8 @@ class Experiment:
                     ),
                     time_step=self.time_step,
                     evaluation=job_copy,
-                    batch_size=self.batch_size
+                    batch_size=self.batch_size,
+                    clamp_results=self.clamp_results
                 )
 
     def run_experiment(self):
@@ -242,6 +246,8 @@ class Experiment:
                             if rewards
                             else 0.0
                         )
+                        
+                        env.reward_history.append(total_reward)
 
                         print(
                             f"{env.mode = }, "

@@ -69,6 +69,7 @@ class MetricsManager:
         self.results["DATA_TRANSFER"] = []
         self.results["CUM_DATA_TRANSFER"] = []
         self.results["SLA"] = []
+        self.results["FINAL_SLA"] = 0.0
         self.results["SLA_VAR"] = []
         self.results[
             "JOB_MEAN_COMPLETION_TIME"
@@ -237,6 +238,8 @@ class MetricsManager:
         self.results["NETWORK_LATENCY"].append(
             self.get_network_latency()
         )
+        if len(self.finished_jobs)>0:
+            self.results['FINAL_SLA'] = max(self.results['SLA'])/len(self.finished_jobs)
 
     def print_experience_summary(self):
         if not self.finished_jobs:
@@ -685,8 +688,7 @@ class MetricsManager:
     def compute_reward(
         self,
         action,
-        tasks=None,
-        previous_server_state=None,
+        tasks=None
     ):
         action = np.asarray(
             action,

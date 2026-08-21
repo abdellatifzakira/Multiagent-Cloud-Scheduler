@@ -293,6 +293,12 @@ class DQNAgent(Agent):
         optimizer="adam",
         layers_config=None,
         decoder_hidden_dim=128,
+        learning_rate = 1e-3,
+        replay_batch_size = 64,
+        replay_start_size = 256,
+        train_every = 10,
+        gradient_steps = 4,
+        target_update_every = 250,
         seed=123,
     ):
         super().__init__(
@@ -341,13 +347,13 @@ class DQNAgent(Agent):
 
         self.buffer = None
 
-        self.replay_batch_size = 64
-        self.replay_start_size = 256
-        self.train_every = 10
-        self.gradient_steps = 4
-        self.target_update_every = 250
+        self.replay_batch_size = replay_batch_size
+        self.replay_start_size = replay_start_size
+        self.train_every = train_every
+        self.gradient_steps =gradient_steps
+        self.target_update_every = target_update_every
 
-        self.learning_rate = 1e-3
+        self.learning_rate = learning_rate
         self.weight_decay = 0.0
 
         self.step_count = 0

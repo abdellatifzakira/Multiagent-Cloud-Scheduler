@@ -18,8 +18,8 @@ from classes.ServerFarmClass import (
 )
 
 
-global_seed = 123
-test_seed = 256
+global_seed = 256
+test_seed = 123
 
 
 jobs, _ = generate_workload(
@@ -104,7 +104,7 @@ server_farm = build_random_server_farms(
         4096.0,
         16384.0,
     ],
-    mode="EXECUTION_TIME",
+    mode="ROUNDROBIN",
     seed=global_seed,
 )
 
@@ -120,10 +120,12 @@ exp = Experiment(
     scenarios_edges=scenarios,
     schedulers=[
         DQNAgent(
-            epsilon=0.5,
+            epsilon=0.05,
             epsilon_decay=0.95,
             seed=global_seed),
         LeastLoadedScheduler(mode='CPU'),
+        RoundRobinScheduler(),
+        #DataLocalityAwareScheduler(mode='BALANCED')
         RandomAgent(seed=global_seed)
         
     ],
@@ -131,8 +133,9 @@ exp = Experiment(
     network_overhead_enabled=True,
     power_model="DEFAULT",
     evaluation=jobs_test,
-    episodes=10,
-    batch_size=4
+    episodes=50,
+    batch_size=4,
+    clamp_results = True
 )
 
 

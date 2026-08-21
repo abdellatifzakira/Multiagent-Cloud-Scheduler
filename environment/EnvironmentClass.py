@@ -9,7 +9,8 @@ class Environment:
                  time_step = 0.01,
                  network_manager = None,
                  network_overhead = False,
-                 batch_size = 4
+                 batch_size = 4,
+                 clamp_results = False,
                  ):
         self.server_farm = server_farm
         self.job_manager = job_manager
@@ -17,6 +18,7 @@ class Environment:
         self.scheduler = scheduler
         self.time_step = time_step
         self.time_step_backup = time_step
+        self.clamp_results = clamp_results
         self.scheduler.server_farm = self.server_farm
         self.scheduler.servers = self.server_farm.servers
         self.network_manager = network_manager
@@ -114,7 +116,7 @@ class Environment:
         print("END SUMMARY RUN FOR SCHEDULER : ", self.scheduler.name)
         print("==================================================")
 
-        if self.draining_time:
+        if self.draining_time and self.clamp_results:
             self.metrics_manager.clamp_results(critical_time= self.draining_time)
         return  self.metrics_manager.results
     
