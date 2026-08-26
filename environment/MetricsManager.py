@@ -869,11 +869,13 @@ class MetricsManager:
                     )
                 )
             )
+            
+
 
             reward = (
                 - 0.05 * projected_queue
-                - 0.10 * power_ratio
-                - 0.15 * relative_load
+                - 0.15 * power_ratio
+                - 0.2 * relative_load
                 - 0.35 * balance_penalty
             )
 

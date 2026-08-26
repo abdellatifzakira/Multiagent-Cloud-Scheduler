@@ -17,7 +17,7 @@ class Task:
     self.ram = ram
     self.server_farm_id = None
     self.server = None
-    self.status = status # -1: rejected, 0: finished, 1: ready, 2: running, 3: initialized, 4: pending.
+    self.status = status # 0: finished, 1: ready, 2: running, 3: initialized, 4: pending.
     self.num_instructions = num_instructions
     self.arrival_time = None
     self.start_time = None

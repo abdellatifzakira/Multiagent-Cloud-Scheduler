@@ -530,7 +530,7 @@ def generate_workload(seed =  123,
 
     if isinstance(num_jobs, int):
             num_jobs = [num_jobs]
-    if isinstance(mean_job_gap, float):
+    if isinstance(mean_job_gap, float) or isinstance(mean_job_gap, int):
                 mean_job_gap = [mean_job_gap]
             
     assert len(num_jobs) == len(mean_job_gap),\
