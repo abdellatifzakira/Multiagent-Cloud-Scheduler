@@ -85,6 +85,8 @@ class CloudEnv(gym.Env):
         self._decision_actions = None
         
         self.reward_history = []
+        
+        self.last_agent_action = 0.0
 
     def is_running(self):
         """
@@ -190,6 +192,8 @@ class CloudEnv(gym.Env):
         )
 
         self.ready_tasks_dict = {}
+        
+        self.last_agent_action = 0.0
 
         self.metrics_manager.set_name(
             self.agent.name
@@ -204,18 +208,13 @@ class CloudEnv(gym.Env):
         }
 
     def step(self, action):
+        self.last_agent_action = self.current_time
         self.job_manager.pending_tasks = 0
 
         action = np.asarray(
             action,
             dtype=np.int64,
         )
-
-        if (
-            len(self.current_batch)
-            != self.batch_size
-        ):
-            return self._advance_one_tick()
 
         if not all(
             task.status == 1
@@ -398,7 +397,7 @@ class CloudEnv(gym.Env):
     def is_scheduling_time(self):
         return (
             len(self.ready_tasks)
-            >= self.batch_size
+            > 0 #self.batch_size
         )
 
     def is_batch_finished(self):
@@ -412,25 +411,6 @@ class CloudEnv(gym.Env):
         )
 
     def step_ahead(self):
-        tasks = self.ready_tasks[:self.batch_size]
-
-        if 0 < len(tasks) < self.batch_size:
-            if not self.job_manager.workload:
-
-                if self.mode == 'TEST' and not self.draining_time:
-                    self.draining_time = self.current_time
-
-                print(f"Draining remaining {len(tasks)} tasks")
-
-                for task in tasks:
-                    for server in self.server_farm.servers.values():
-                        if server.first_check(task):
-                            server.add_task_to_queue(
-                                task,
-                                t=self.current_time
-                            )
-                            break
-
         return self._advance_one_tick()
 
     def log(self):
@@ -464,9 +444,9 @@ class CloudEnv(gym.Env):
     def get_results(self):
         if self.agent.trainable :
             self.metrics_manager.results['REWARD'] = self.reward_history
-        if self.draining_time is not None and self.clamp_results:
+        if self.clamp_results:
             self.metrics_manager.clamp_results(
-                critical_time=self.draining_time
+                critical_time=self.last_agent_action
             )
 
         return self.metrics_manager.results

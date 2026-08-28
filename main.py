@@ -1,5 +1,3 @@
-# main.py
-
 from utilities.DAG_handlers import *
 from classes.JobClass import generate_workload
 from baselines.RoundRobin import RoundRobinScheduler
@@ -18,16 +16,16 @@ from classes.ServerFarmClass import build_random_server_farms
 
 
 
-infra_seed = 123
+infra_seed = 13
 training_seed = 24
-testing_seed = 55
+testing_seed = 1
 schedulers_seed = 42
 
 start_time = time.time()
 jobs, _ = generate_workload(
         seed=training_seed,
-        num_jobs=[50, 50, 50],
-        mean_job_gap=[0.05, 0.025, 0.01],
+        num_jobs=[100, 50, 25],
+        mean_job_gap=[0.1, 0.05, 0.01],
         num_tasks_per_job=5,
         cpu_req_per_task=[12, 64],
         ram_req_per_task=[2, 32],
@@ -69,29 +67,16 @@ server_farm = build_random_server_farms(
     )
 
 
-plot_job_dags(
-           jobs_list=jobs
-        )
+
         
-print("=" * 51)
-print("BEFORE RUN CHECK")
-print(
-           f"ALL TASKS "
-           f"{len([task for job in jobs for task in job.tasks.values()])}")
-print(
-           "TASK STATES "
-           f"{set(task.status for job in jobs for task in job.tasks.values())} "
-           " : EXPECTED {1, 3}"
-        )
-        
-print("=" * 51)
+
 plot_server_network(
             farm=server_farm
         )
 jobs_test, _ = generate_workload(
                 seed=testing_seed,
-                num_jobs=[50, 50, 50],
-                mean_job_gap=[0.05, 0.025, 0.01],
+                num_jobs=[100, 50, 25],
+                mean_job_gap=[0.1, 0.05, 0.01],
                 num_tasks_per_job=5,
                 cpu_req_per_task=[12, 64],
                 ram_req_per_task=[2, 32],
@@ -106,6 +91,21 @@ jobs_test, _ = generate_workload(
                     1024,
                 ],
             )
+plot_job_dags(
+           jobs_list=jobs_test
+        )
+print("=" * 51)
+print("BEFORE RUN CHECK")
+print(
+           f"ALL TASKS "
+           f"{len([task for job in jobs_test for task in job.tasks.values()])}")
+print(
+           "TASK STATES "
+           f"{set(task.status for job in jobs_test for task in job.tasks.values())} "
+           " : EXPECTED {1, 3}"
+        )
+        
+print("=" * 51)
 
 exp = Experiment(
             infrastructure=server_farm,
@@ -113,12 +113,12 @@ exp = Experiment(
             scenarios_edges=[],
             schedulers=[
                 DQNAgent(
-                    epsilon=0.15,
+                    epsilon=1.0,
                     epsilon_decay=0.95,
                     seed=schedulers_seed,
                     buffer_capacity=10_000),
                 SequentialDQNAgent(
-                            epsilon=0.15,
+                            epsilon=1.0,
                             epsilon_decay=0.95,
                             seed=schedulers_seed,
                             buffer_capacity=10_000),
@@ -134,8 +134,8 @@ exp = Experiment(
             network_overhead_enabled=True,
             power_model="DEFAULT",
             evaluation=jobs_test,
-            episodes=20,
-            batch_size=4,
+            episodes=500,
+            batch_size=25,
             clamp_results = True
         )
 

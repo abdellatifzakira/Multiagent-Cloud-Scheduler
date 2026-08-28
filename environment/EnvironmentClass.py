@@ -34,6 +34,7 @@ class Environment:
         self.hosting_count = 0
         
         self.batch_size = batch_size
+        self.last_scheduler_action = 0.0
 
         
     def is_running(self) :
@@ -70,11 +71,9 @@ class Environment:
 
             self.job_manager.update_ready_tasks()
             if self.is_scheduling_time():
-                self.scheduler.assign_tasks(self.job_manager.ready_tasks[:self.batch_size], t)
-            if 0< len(self.job_manager.ready_tasks[:self.batch_size])< self.batch_size and not self.job_manager.workload:
-                print(f"Draining remaining {len(self.job_manager.ready_tasks[:self.batch_size])} tasks")
-                self.draining_time = t
-                self.scheduler.assign_tasks(self.job_manager.ready_tasks[:self.batch_size], t)
+                self.last_scheduler_action = t
+                self.scheduler.assign_tasks(self.job_manager.ready_tasks, t)
+
 
             for server in self.server_farm.servers.values() :
                 server.execute_tasks(t)
@@ -116,12 +115,12 @@ class Environment:
         print("END SUMMARY RUN FOR SCHEDULER : ", self.scheduler.name)
         print("==================================================")
 
-        if self.draining_time and self.clamp_results:
-            self.metrics_manager.clamp_results(critical_time= self.draining_time)
+        if self.clamp_results:
+            self.metrics_manager.clamp_results(critical_time= self.last_scheduler_action)
         return  self.metrics_manager.results
     
     
     def is_scheduling_time(self):
-        return len(self.job_manager.ready_tasks)>= self.batch_size
+        return len(self.job_manager.ready_tasks)> 0 # self.batch_size
 
 

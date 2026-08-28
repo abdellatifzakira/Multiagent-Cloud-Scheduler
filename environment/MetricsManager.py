@@ -712,180 +712,182 @@ class MetricsManager:
             if server_id not in servers:
                 rewards[index] = -1.0
                 continue
+            try :
+                task = tasks[index]
 
-            task = tasks[index]
+                server = servers[server_id]
 
-            server = servers[server_id]
+                capacity_cpu = max(
+                    float(
+                        server.c_cpu
+                        * server.virtualization_level
+                    ),
+                    1e-6,
+                )
 
-            capacity_cpu = max(
-                float(
-                    server.c_cpu
-                    * server.virtualization_level
-                ),
-                1e-6,
-            )
+                capacity_ram = max(
+                    float(
+                        server.c_ram
+                        * server.virtualization_level
+                    ),
+                    1e-6,
+                )
 
-            capacity_ram = max(
-                float(
-                    server.c_ram
-                    * server.virtualization_level
-                ),
-                1e-6,
-            )
+                available_cpu = max(
+                    float(
+                        sum(
+                            vm.cpu - vm.used_cpu
+                            for vm in server.vms.values()
+                        )
+                    ),
+                    0.0,
+                )
 
-            available_cpu = max(
-                float(
+                available_ram = max(
+                    float(
+                        sum(
+                            vm.ram - vm.used_ram
+                            for vm in server.vms.values()
+                        )
+                    ),
+                    0.0,
+                )
+
+                task_cpu = max(
+                    float(task.cpu),
+                    1e-6,
+                )
+
+                task_ram = max(
+                    float(task.ram),
+                    1e-6,
+                )
+
+                cpu_fit = min(
+                    available_cpu / task_cpu,
+                    1.0,
+                )
+
+                ram_fit = min(
+                    available_ram / task_ram,
+                    1.0,
+                )
+
+                if (
+                    available_cpu < task_cpu
+                    or available_ram < task_ram
+                ):
+                    rewards[index] = -1.0
+                    continue
+
+                projected_queue = (
                     sum(
-                        vm.cpu - vm.used_cpu
-                        for vm in server.vms.values()
+                        queued.cpu
+                        for queued in server.task_queue
                     )
-                ),
-                0.0,
-            )
+                    + task_cpu
+                ) / capacity_cpu
 
-            available_ram = max(
-                float(
-                    sum(
-                        vm.ram - vm.used_ram
-                        for vm in server.vms.values()
+                projected_utilization = min(
+                    1.0,
+                    1.0
+                    - (
+                        available_cpu
+                        - task_cpu
                     )
-                ),
-                0.0,
-            )
-
-            task_cpu = max(
-                float(task.cpu),
-                1e-6,
-            )
-
-            task_ram = max(
-                float(task.ram),
-                1e-6,
-            )
-
-            cpu_fit = min(
-                available_cpu / task_cpu,
-                1.0,
-            )
-
-            ram_fit = min(
-                available_ram / task_ram,
-                1.0,
-            )
-
-            if (
-                available_cpu < task_cpu
-                or available_ram < task_ram
-            ):
-                rewards[index] = -1.0
-                continue
-
-            projected_queue = (
-                sum(
-                    queued.cpu
-                    for queued in server.task_queue
+                    / capacity_cpu,
                 )
-                + task_cpu
-            ) / capacity_cpu
 
-            projected_utilization = min(
-                1.0,
-                1.0
-                - (
-                    available_cpu
-                    - task_cpu
+                current_power = float(
+                    server.get_power_consumption()
                 )
-                / capacity_cpu,
-            )
 
-            current_power = float(
-                server.get_power_consumption()
-            )
+                max_power = max(
+                    float(
+                        server.get_max_power_consumption()
+                    ),
+                    1e-6,
+                )
 
-            max_power = max(
-                float(
-                    server.get_max_power_consumption()
-                ),
-                1e-6,
-            )
+                power_ratio = np.clip(
+                    current_power / max_power,
+                    0.0,
+                    1.0,
+                )
 
-            power_ratio = np.clip(
-                current_power / max_power,
-                0.0,
-                1.0,
-            )
+                effective_compute = max(
+                    float(
+                        self.get_state_dict()[
+                            "EFFECTIVE_COMPUTE"
+                        ][server_id]
+                    ),
+                    1e-9,
+                )
 
-            effective_compute = max(
-                float(
-                    self.get_state_dict()[
-                        "EFFECTIVE_COMPUTE"
-                    ][server_id]
-                ),
-                1e-9,
-            )
+                instruction_scale = max(
+                    float(
+                        getattr(
+                            task,
+                            "num_instructions",
+                            1.0,
+                        )
+                    ),
+                    1.0,
+                )
 
-            instruction_scale = max(
-                float(
-                    getattr(
-                        task,
-                        "num_instructions",
-                        1.0,
-                    )
-                ),
-                1.0,
-            )
+                expected_load = (
+                    instruction_scale
+                    / effective_compute
+                )
 
-            expected_load = (
-                instruction_scale
-                / effective_compute
-            )
+                relative_load = np.tanh(
+                    expected_load / 10.0
+                )
 
-            relative_load = np.tanh(
-                expected_load / 10.0
-            )
-
-            balance_penalty = (
-                abs(
-                    projected_utilization
-                    - np.mean(
-                        [
-                            (
-                                1.0
-                                - sum(
-                                    vm.cpu
-                                    - vm.used_cpu
-                                    for vm in s.vms.values()
+                balance_penalty = (
+                    abs(
+                        projected_utilization
+                        - np.mean(
+                            [
+                                (
+                                    1.0
+                                    - sum(
+                                        vm.cpu
+                                        - vm.used_cpu
+                                        for vm in s.vms.values()
+                                    )
+                                    / max(
+                                        float(
+                                            s.c_cpu
+                                            * s.virtualization_level
+                                        ),
+                                        1e-6,
+                                    )
                                 )
-                                / max(
-                                    float(
-                                        s.c_cpu
-                                        * s.virtualization_level
-                                    ),
-                                    1e-6,
-                                )
-                            )
-                            for s in servers.values()
-                        ]
+                                for s in servers.values()
+                            ]
+                        )
                     )
                 )
-            )
-            
+                
 
 
-            reward = (
-                - 0.05 * projected_queue
-                - 0.15 * power_ratio
-                - 0.2 * relative_load
-                - 0.35 * balance_penalty
-            )
-
-            rewards[index] = float(
-                np.clip(
-                    reward,
-                    -2.0,
-                    2.0,
+                reward = (
+                    - 0.05 * projected_queue
+                    - 0.15 * power_ratio
+                    - 0.2 * relative_load
+                    - 0.35 * balance_penalty
                 )
-            )
+
+                rewards[index] = float(
+                    np.clip(
+                        reward,
+                        -2.0,
+                        2.0,
+                    )
+                )
+            except IndexError:
+                rewards[index] = 0.0
 
         return rewards
 
