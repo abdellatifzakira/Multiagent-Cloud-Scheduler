@@ -126,6 +126,8 @@ class DQNAgent(Agent):
         gradient_steps=4,
         target_update_every=250,
         buffer_capacity=1000,
+        model_path = None,
+        resume_training = False,
         seed=123,
     ):
         super().__init__(
@@ -142,6 +144,7 @@ class DQNAgent(Agent):
 
         self.state = None
         self.active_tasks = 0
+        self.resume_training = resume_training
 
         self.decision_network = None
         self.network = None
@@ -152,6 +155,7 @@ class DQNAgent(Agent):
         self.state_size = None
 
         self.task_token_dim = 3
+        self.model_path = model_path
 
         self.optimizer_name = optimizer
         self.buffer_capacity = buffer_capacity
@@ -197,6 +201,7 @@ class DQNAgent(Agent):
 
         self._warned_overflow = False
         self.built = False
+        self.loaded = False
 
     def build(self):
         if self.action_space is None:
@@ -540,3 +545,40 @@ class DQNAgent(Agent):
             self.min_epsilon,
             self.epsilon * self.epsilon_decay,
         )
+        
+        
+    
+    def save_model(self, path):
+
+        torch.save(
+            self.network.state_dict(),
+            path,
+        )
+
+        print(f"[DQN] Model saved to: {path}")
+
+
+    def load_model(self, path=None):
+        if not path :
+            self.loaded = False
+            return False
+
+        self.network.load_state_dict(
+            torch.load(
+                path,
+                map_location=self.device,
+                weights_only=True,
+            )
+        )
+
+        # Keep target network consistent too.
+        self.target_network.load_state_dict(
+            self.network.state_dict()
+        )
+
+        self.network.eval()
+        self.target_network.eval()
+
+        print(f"[DQN] Model loaded from: {path}")
+        self.loaded = True
+        return True

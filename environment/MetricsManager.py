@@ -338,6 +338,13 @@ class MetricsManager:
             "TIMELINE LENGTH : "
             f"{len(self.results['TIMELINE'])}"
         )
+        
+        return (
+                np.mean(self.results["POWER"]),
+                np.mean(self.results["CPU_STD"]),
+                np.mean(completion_time),
+                makespan
+            )
 
     def print_after_run_check(self):
         all_tasks = [
@@ -456,6 +463,8 @@ class MetricsManager:
             "(DUE TO SIM ERROR) : "
             f"{data_transfer - (saved_data + received_data)}"
         )
+        
+        return (data_transfer - (saved_data + sent_data)), (data_transfer - (saved_data + received_data))
 
     def print_power_model_integrity_check(self):
         if not self.results["POWER"]:
@@ -513,6 +522,8 @@ class MetricsManager:
             "FINAL SIMULATION RELATIVE ERROR : "
             f"{relative_error * 100:.6f} %"
         )
+        
+        return relative_error
 
     def print_infrastructure_details(self):
         print(
@@ -581,6 +592,12 @@ class MetricsManager:
                     "=========> COMPLETED TASKS : "
                     f"{vm.completed_tasks}"
                 )
+                print(
+                    "=========> MAX OBSERVED CONCURRENT TASKS  : "
+                    f"{vm.max_concurrent_tasks_count}"
+                    )
+                
+                
 
             print(
                 f"TOTAL TASKS RUN ON SERVER "

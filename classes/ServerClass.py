@@ -111,7 +111,7 @@ class Server:
         
     
     def check_data_availability(self, task):
-        epsilon = 1e-9
+        epsilon = 1e-3 # less than 1 mb error
         if not self.network_enabled:
             return True
         required_data = task.parent_weights
@@ -279,7 +279,8 @@ class Server:
                 else:
                     unhosted_buffer.append(task)
             else:
-                pass
+                raise ValueError(f"EXPECTED QUEUED TASK GOT : {task.status}")
+                
 
         # Push delayed allocations back to the main active queue
         self.task_queue = unhosted_buffer
@@ -299,7 +300,7 @@ class Server:
 
     
     def cpu_utilization(self):
-        return np.sum(vm.used_cpu for vm in self.vms.values())/self.c_cpu
+        return sum(vm.used_cpu for vm in self.vms.values())/self.c_cpu
     
     def virtual_cpu_efficiency(self):
         usage = np.sum(vm.used_cpu for vm in self.vms.values())/self.virtual_capacity
@@ -307,7 +308,7 @@ class Server:
         return usage
 
     def ram_utilization(self):
-        return np.sum(vm.used_ram for vm in self.vms.values())/self.c_ram
+        return sum(vm.used_ram for vm in self.vms.values())/self.c_ram
 
     
     
@@ -347,8 +348,8 @@ class Server:
     
     
     def get_storage_usage(self):
-        return (np.sum(_tsk.size for _tsk in self.hosted_tasks.keys()) +
-                np.sum(_tsk.size for _tsk in self.task_queue))
+        return (sum(_tsk.size for _tsk in self.hosted_tasks.keys()) +
+                sum(_tsk.size for _tsk in self.task_queue))
         
     
     def storage_utilization(self):
@@ -361,3 +362,56 @@ class Server:
     
     def get_max_power_consumption(self):
         return self.power_function(cpu=1.0, ram= 1.0, storage=1.0)
+
+
+if __name__ == "__main__" :
+    from classes.TaskClass import Task
+    alpha = 200
+    beta = 2
+    static_power= 100
+    
+    usage = 0.05 # from 0.0 to 1.0 <--> 0.0% to 100 %
+    
+    server_cpu = 1000
+    
+    # tolerance
+    ndigits = 6
+    
+    server = Server(
+        c_cpu=server_cpu,
+        c_ram=1000,
+        virtualization_level=1.0, # an ideal state all the computational power is used by vms
+        compute_power=1e9,
+        alpha=alpha,
+        beta=beta,
+        static_power=static_power
+    )
+    # one vm that uses all the ressourses of the server
+    server.spawn_vm_group(cpu=[1000], ram=[1000], compute=[1e9])
+    
+    print(f"SERVER CPU UTILIZATION : {server.cpu_utilization()} % | EXPECTED 0.0 %")
+    print(f"SERVER POWER CONSUMPTION : {server.get_power_consumption()} W | EXPECTED {static_power} W")
+    
+    # the task : 500cpu --> 50% cpu usage from the server
+    
+    task = Task(
+        id = 0, job_id=0,
+        cpu=server_cpu*usage, ram=200,
+        size = 32, status=1,
+        num_instructions=1e9
+    )
+    
+    
+    if server.first_check(task=task):
+        print("HOSTING TASK IN THE SERVER")
+        server.add_task_to_queue(task=task, t=0)
+        print("EXECTUTING THE TASK")
+        server.execute_tasks(t=0)
+    else:
+        print("FAILED TO HOST THE TASK")
+    
+    
+    print(f"SERVER CPU UTILIZATION : {server.cpu_utilization()*100} % | EXPECTED {usage*100} %")
+    print(f"SERVER POWER CONSUMPTION : {server.get_power_consumption()} W | EXPECTED {static_power+ alpha* usage**beta} W")
+    
+    

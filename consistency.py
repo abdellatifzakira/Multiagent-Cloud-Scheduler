@@ -1,18 +1,42 @@
 from utilities.DAG_handlers import *
 from classes.JobClass import generate_workload
-from baselines.RoundRobin import RoundRobinScheduler
-from comparison.LeastLoaded import LeastLoadedScheduler
-from comparison.LeastCommunication import DataLocalityAwareScheduler
-from comparison.LeastEnergy import EnergyAwareScheduler
-from utilities.helpers import *
 from ExperimentRunner import Experiment
+from baselines.RoundRobin import RoundRobinScheduler
+from RL.agents.Agent import Agent
 
 import time
-
-from RL.agents.RandomAgent import RandomAgent
-from RL.agents.SequentialDQNAgent import SequentialDQNAgent
-from RL.agents.DQNAgent import DQNAgent
 from classes.ServerFarmClass import build_random_server_farms
+
+class RoundRobinTwin(Agent):
+    def __init__(self, seed = 123):
+        super().__init__('RRA', 'ROUND ROBIN AGENT')
+        self.trainable = False
+        self.seed = seed
+        self.index = 0
+        self.batch_size = 4
+        self.num_servers = 4
+        
+    
+    def take_action(self):
+        action  = [0 for _ in range(self.batch_size)]
+        for _ in range(self.batch_size):
+            action[_] = self.index
+            self.index = (self.index + 1)%self.num_servers
+        return action
+
+    
+    
+    def observe(self, state):
+        tasks = state["TASKS"]
+        self.batch_size = len(list(tasks.keys()))
+        
+
+    def build(self):
+        self.action_space.seed(self.seed)
+    
+    def update(self, *args):
+        pass
+    
 
 
 
@@ -21,27 +45,12 @@ training_seed = 24
 testing_seed = 1
 schedulers_seed = 42
 
+num_jobs = 100
+num_tasks_per_job = 5 # 100 task in total
+
+num_servers = 4
+
 start_time = time.time()
-jobs, _ = generate_workload(
-        seed=training_seed,
-        num_jobs=[5, 5, 5],
-        mean_job_gap=[0.1, 0.05, 0.01],
-        num_tasks_per_job=5,
-        cpu_req_per_task=[12, 64],
-        ram_req_per_task=[2, 32],
-        task_size=[32, 64],
-        edge_probability=0.25,
-        instructions_per_task=[
-            250e5,
-            500e5,
-        ],
-        data_transfer_range=[
-            512,
-            1024,
-        ],
-    )
-    
-    
 server_farm = build_random_server_farms(
         cpu_range=[1024, 1024 * 2],
         ram_range=[4096, 4096 * 4],
@@ -70,14 +79,12 @@ server_farm = build_random_server_farms(
 
         
 
-plot_server_network(
-            farm=server_farm
-        )
+
 jobs_test, _ = generate_workload(
                 seed=testing_seed,
-                num_jobs=[100, 100, 100],
-                mean_job_gap=[0.1, 0.05, 0.01],
-                num_tasks_per_job=5,
+                num_jobs=[num_jobs],
+                mean_job_gap=[0.0],
+                num_tasks_per_job=num_tasks_per_job,
                 cpu_req_per_task=[12, 64],
                 ram_req_per_task=[2, 32],
                 task_size=[32, 64],
@@ -91,9 +98,6 @@ jobs_test, _ = generate_workload(
                     1024,
                 ],
             )
-plot_job_dags(
-           jobs_list=jobs_test
-        )
 print("=" * 51)
 print("BEFORE RUN CHECK")
 print(
@@ -109,29 +113,11 @@ print("=" * 51)
 
 exp = Experiment(
             infrastructure=server_farm,
-            jobs=jobs,
+            jobs=jobs_test,
             scenarios_edges=[],
             schedulers=[
-                #DQNAgent(
-                #    epsilon=1.0,
-                #    epsilon_decay=0.995,
-                #    seed=schedulers_seed,
-                #    buffer_capacity=10_000,
-                #    model_path = "models/No_DAG_DQN.pth",
-                #    resume_training=False),
-                #SequentialDQNAgent(
-                #            epsilon=1.0,
-                #            epsilon_decay=0.995,
-                #            seed=schedulers_seed,
-                #            buffer_capacity=10_000,
-                #            model_path = "models/No_DAG_SDQN.pth",
-                #            resume_training=False),
-                LeastLoadedScheduler(mode='CPU'),
-                #RoundRobinScheduler(),
-                #DataLocalityAwareScheduler(mode='NAIVE'),
-                #DataLocalityAwareScheduler(mode='BALANCED'),
-                #EnergyAwareScheduler(),
-                #RandomAgent(seed=schedulers_seed)
+                RoundRobinScheduler(mode="CHECK"),
+                RoundRobinTwin()
                 
             ],
             time_step=0.005,
@@ -139,8 +125,8 @@ exp = Experiment(
             power_model="DEFAULT",
             evaluation=jobs_test,
             episodes=600,
-            batch_size=25,
-            clamp_results = True,
+            batch_size=24,
+            clamp_results = False,
             verbose = True
         )
 

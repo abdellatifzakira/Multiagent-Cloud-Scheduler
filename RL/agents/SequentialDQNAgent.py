@@ -300,7 +300,9 @@ class SequentialDQNAgent(Agent):
         gradient_steps = 4,
         target_update_every = 250,
         buffer_capacity = 1000,
+        model_path = None,
         seed=123,
+        resume_training = False
     ):
         super().__init__(
             "SDQN",
@@ -335,6 +337,7 @@ class SequentialDQNAgent(Agent):
         self.epsilon = float(epsilon)
         self.min_epsilon = float(min_epsilon)
         self.epsilon_decay = float(epsilon_decay)
+        self.model_path = model_path
 
         self.gamma = float(gamma)
 
@@ -366,6 +369,8 @@ class SequentialDQNAgent(Agent):
         self.last_target_mean = None
 
         self.action_counts = None
+        
+        self.resume_training = resume_training
 
         self.device = torch.device(
             "cuda"
@@ -375,6 +380,8 @@ class SequentialDQNAgent(Agent):
 
         self._warned_overflow = False
         self.built = False
+        
+        self.loaded = False
 
     def build(self):
         if self.action_space is None:
@@ -989,3 +996,39 @@ class SequentialDQNAgent(Agent):
             self.min_epsilon,
             self.epsilon * self.epsilon_decay,
         )
+        
+    
+    
+    def save_model(self, path):
+        torch.save({
+            "network": self.network.state_dict(),
+            "target_network": self.target_network.state_dict(),
+        }, path)
+
+        print(f"[DQN] Model saved to: {path}")
+
+
+    def load_model(self, path = None):
+        if not path :
+            self.loaded = False
+            return False
+        checkpoint = torch.load(
+            path,
+            map_location=self.device,
+            weights_only=False,
+        )
+
+        self.network.load_state_dict(
+            checkpoint["network"]
+        )
+
+        self.target_network.load_state_dict(
+            checkpoint["target_network"]
+        )
+
+        self.network.eval()
+        self.target_network.eval()
+
+        print(f"[SDQN] Model loaded from: {path}")
+        self.loaded = True
+        return True

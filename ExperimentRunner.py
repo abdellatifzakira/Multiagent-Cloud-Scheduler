@@ -11,6 +11,7 @@ from RL.CloudEnv import CloudEnv
 
 import copy
 import numpy as np
+import time
 
 
 class Experiment:
@@ -26,7 +27,8 @@ class Experiment:
         evaluation=None,
         episodes=10,
         batch_size = 4,
-        clamp_results = False
+        clamp_results = False,
+        verbose = False
     ):
         self.infrastructure = infrastructure
         self.jobs = jobs or []
@@ -49,6 +51,8 @@ class Experiment:
 
         self.evaluation = evaluation
         self.episodes = int(episodes)
+        
+        self.verbose = verbose
 
         if not self.network_overhead_enabled:
             print(
@@ -160,13 +164,18 @@ class Experiment:
                 total_episodes = 0
 
             episode = 0
-
+            if getattr(scheduler, "model_path", False):
+                scheduler.load_model(scheduler.model_path)
+            else :
+                setattr(scheduler, "resume_training", True)
+            start = time.time()
             while episode <= total_episodes:
                 try:
                     if scheduler.trainable:
-                        if episode == total_episodes:
+                        if episode == total_episodes or (scheduler.loaded and not scheduler.resume_training) :
                             env.mode = "TEST"
                             scheduler.epsilon = 0.0
+                            episode = total_episodes
                         elif episode > 0:
                             scheduler.decay_epsilon()
                     else:
@@ -248,36 +257,43 @@ class Experiment:
                         )
                         
                         env.reward_history.append(total_reward)
-
-                        print(
-                            f"{env.mode = }, "
-                            f"{episode = }/"
-                            f"{self.episodes}, "
-                            f"TOTAL REWARD : "
-                            f"{total_reward:.5f}, "
-                            f"MEAN REWARD : "
-                            f"{mean_reward:.5f},\n"
-                            f"LENGTH REWARD : "
-                            f"{len(rewards)}, "
-                            f"EPSILON : "
-                            f"{scheduler.epsilon:.5f}, "
-                            f"BUFFER LENGTH : "
-                            f"{len(scheduler.buffer)}"
-                        )
+                        if self.verbose and (episode % 50 == 0) :
+                            print(
+                                f"{env.mode = }, "
+                                f"{episode = }/"
+                                f"{self.episodes}, "
+                                f"TOTAL REWARD : "
+                                f"{total_reward:.5f}, "
+                                f"MEAN REWARD : "
+                                f"{mean_reward:.5f},\n"
+                                f"LENGTH REWARD : "
+                                f"{len(rewards)}, "
+                                f"EPSILON : "
+                                f"{scheduler.epsilon:.5f}, "
+                                f"BUFFER LENGTH : "
+                                f"{len(scheduler.buffer)}"
+                            )
 
                     episode += 1
 
                 except KeyboardInterrupt:
-                    print(
-                        "TRAINING INTERRUPTED — "
-                        "TESTING THE LAST TRAINED MODEL"
-                    )
+                    if scheduler.trainable:
+                        print(
+                            "TRAINING INTERRUPTED — "
+                            "TESTING THE LAST TRAINED MODEL"
+                        )
 
-                    episode = total_episodes
+                        episode = total_episodes
+                    else :
+                        pass
 
             self.results[
                 scheduler
             ] = env.get_results()
+            if scheduler.trainable and scheduler.resume_training:
+                print(f"Model Trained for : {time.time() - start} s")
+                file = f"DAG_{scheduler.name}" if self.network_overhead_enabled else f"No_DAG_{scheduler.name}"
+                scheduler.save_model(f"models/{file}.pth")
 
             env.log()
 

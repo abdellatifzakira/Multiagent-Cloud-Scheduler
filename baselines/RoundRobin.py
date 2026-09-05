@@ -2,9 +2,10 @@ import numpy as np
 from templates.Scheduler import Scheduler
 
 class RoundRobinScheduler(Scheduler):
-    def __init__(self):
+    def __init__(self, mode="BENCHMARK"):
         super().__init__("RR", 'Round Robin')
         self.pointer = 0
+        self.mode = mode
         
     
         
@@ -19,7 +20,7 @@ class RoundRobinScheduler(Scheduler):
             success = False
             if server.first_check(task):
                 success = server.add_task_to_queue(task, t)
-            if success :
+            if success or self.mode == "CHECK":
                 self.pointer = (self.pointer + 1) % n
 
 

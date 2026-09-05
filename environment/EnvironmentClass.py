@@ -72,7 +72,7 @@ class Environment:
             self.job_manager.update_ready_tasks()
             if self.is_scheduling_time():
                 self.last_scheduler_action = t
-                self.scheduler.assign_tasks(self.job_manager.ready_tasks, t)
+                self.scheduler.assign_tasks(self.job_manager.ready_tasks[:self.batch_size], t)
 
 
             for server in self.server_farm.servers.values() :
@@ -82,6 +82,7 @@ class Environment:
                 
             self.job_manager.update_running_tasks()
             self.job_manager.update_finished_jobs()
+            t += self.time_step
             self.server_farm.update_farm_state(t=t, time_step = self.time_step)
             self.metrics_manager.collect_data(self.job_manager, t)
             
@@ -93,8 +94,6 @@ class Environment:
                 
                 
                 self.network_manager.distribute_data_payloads(t, self.time_step)
-            
-            t += self.time_step
         
         
         print("==================================================")

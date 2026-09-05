@@ -409,5 +409,155 @@ def build_random_server_farms(
 
 
 
-                
-                
+if __name__ == "__main__" :
+
+    from classes.JobClass import generate_workload
+    from classes.ServerClass import Server
+    from environment.NetworkManager import NetworkManager
+    
+    t = 0
+    dt = 0.01
+    ndigits = 6
+    
+    data = 8192
+    
+    bw = 4096
+    
+        
+    print("="*50)
+    
+    print("REMOTE DATA ACCESS TEST")
+    
+    print("="*50)
+    server_Farm = build_random_server_farms(
+        bandwidth=[bw],
+        server_count=2
+    )
+    
+    # Activate communiation overhead
+    server_Farm.communication_enabled = True
+    server_Farm.set_communication_mode()
+    
+    network = NetworkManager(server_farm=server_Farm)
+    
+    job, _ = generate_workload(num_jobs=1, num_tasks_per_job= 2, data_transfer_range=[data])
+    job = job[0]
+    
+    parent, child = job.tasks.values()
+    server_parent, server_child = server_Farm.servers.values()
+    
+    assert isinstance(server_parent, Server)
+    assert isinstance(server_child, Server)
+    
+    print("PARENT'S REMAINING PARENTS COUNT : ",parent.remaining_parents)
+    print("CHILD'S REMAINING PARENTS COUNT : ",child.remaining_parents)
+    
+    print("PARENT'S REMAINING STATUS : ",parent.status)
+    print("CHILD'S REMAINING STATUS : ",child.status)
+    
+    if server_parent.first_check(parent):
+        server_parent.add_task_to_queue(parent, t)
+        
+    
+    while parent.status != 0 :
+        t += dt
+        server_parent.execute_tasks(t)
+        server_Farm.update_farm_state(t, dt)
+    
+    print("PARENT FINISHED ON SERVER 1")
+    print("PARENT'S REMAINING STATUS : ",parent.status)
+    print("CHILD'S REMAINING STATUS : ",child.status)
+    
+    
+    print(f"PARENT FINISHED AT : {parent.end_time}s")
+    print(f"CHILD READY AT : {child.arrival_time}s")
+    print("HOSTING CHILD TASK ON SERVER 2")
+    if server_child.first_check(child):
+        server_child.add_task_to_queue(child, t)
+    
+    print("CHILD'S STATUS : ",child.status)
+    
+    while not server_child.check_data_availability(child) :
+        t += dt
+        packets = server_Farm.submit_packets()
+        if len(packets) > 0 :
+            network.update_data_packets(packets)
+            network.resolve_routing()
+        network.distribute_data_payloads(t, dt)
+        
+    print(f"DATA AVAILABLE AT : {round(t, ndigits=ndigits)}")
+    print(f"REQUIRED DATA : {data}")
+    print(f"AVAILABLE BANDWIDTH : {bw}")
+    print(f"EXPECTED WAITING TIME FOR THE DATA AVAILABILITY : {data/bw}s")
+    print(f"WAITING TIME FOR THE DATA AVAILABILITY  : {round(t - child.arrival_time, ndigits=ndigits)}s")
+    print(f"ABSOLUTE ERROR : {abs(round(t - child.arrival_time - data/bw, ndigits=ndigits))}")
+    print(f"ROUNDED TO THE {ndigits}TH DIGIT")
+    
+    
+    print("="*50)
+    
+    print("LOCAL DATA ACCESS TEST")
+    print("="*50)
+    server_Farm = build_random_server_farms(
+        bandwidth=[bw],
+        server_count=2
+    )
+    
+    # Activate communiation overhead
+    server_Farm.communication_enabled = True
+    server_Farm.set_communication_mode()
+    
+    network = NetworkManager(server_farm=server_Farm)
+    
+    job, _ = generate_workload(num_jobs=1, num_tasks_per_job= 2, data_transfer_range=[data])
+    job = job[0]
+    
+    parent, child = job.tasks.values()
+    server_parent, server_child = server_Farm.servers.values()
+    
+    assert isinstance(server_parent, Server)
+    assert isinstance(server_child, Server)
+    
+    print("PARENT'S REMAINING PARENTS COUNT : ",parent.remaining_parents)
+    print("CHILD'S REMAINING PARENTS COUNT : ",child.remaining_parents)
+    
+    print("PARENT'S REMAINING STATUS : ",parent.status)
+    print("CHILD'S REMAINING STATUS : ",child.status)
+    
+    if server_parent.first_check(parent):
+        server_parent.add_task_to_queue(parent, t)
+        
+    
+    while parent.status != 0 :
+        t += dt
+        server_parent.execute_tasks(t)
+        server_Farm.update_farm_state(t, dt)
+    
+    print("PARENT FINISHED ON SERVER 1")
+    print("PARENT'S REMAINING STATUS : ",parent.status)
+    print("CHILD'S REMAINING STATUS : ",child.status)
+    
+    
+    print(f"PARENT FINISHED AT : {round(parent.end_time, ndigits=ndigits)}s")
+    print(f"CHILD READY AT : {round(child.arrival_time, ndigits=ndigits)}s")
+    print("HOSTING CHILD TASK ON SERVER 1")
+    if server_parent.first_check(child):
+        server_parent.add_task_to_queue(child, t)
+    
+    print("CHILD'S STATUS : ",child.status)
+    
+    while not server_parent.check_data_availability(child) :
+        t += dt
+        packets = server_Farm.submit_packets()
+        if len(packets) > 0 :
+            network.update_data_packets(packets)
+            network.resolve_routing()
+        network.distribute_data_payloads(t, dt)
+        
+    print(f"DATA AVAILABLE AT : {round(t, ndigits=ndigits)}")
+    print(f"REQUIRED DATA : {data}")
+    print(f"AVAILABLE BANDWIDTH : {bw}")
+    print(f"EXPECTED WAITING TIME FOR THE DATA AVAILABILITY : {data/bw}s")
+    print(f"WAITING TIME FOR THE DATA AVAILABILITY  : {0}s")
+    print(f"ABSOLUTE ERROR : {abs(round(t - child.arrival_time, ndigits=ndigits))}")
+    print(f"ROUNDED TO THE {ndigits}TH DIGIT")

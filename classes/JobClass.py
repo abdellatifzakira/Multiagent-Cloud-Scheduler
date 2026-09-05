@@ -160,6 +160,7 @@ class Job:
                       seed = 123):
         
         rng = random.Random(seed)
+        rng_data = random.Random(seed)
 
         if time_arrived is not None :
             assert len(time_arrived) == num_jobs, \
@@ -180,7 +181,7 @@ class Job:
             data_transfer_weights = {}
             for i in range(num_tasks_per_job - 1):
                 for j in range(i + 1, num_tasks_per_job):
-                    if rng.random() < edge_probability:  # chance of edge
+                    if rng_data.random() < edge_probability:  # chance of edge
                         weight = rng.randint(min_data,max_data)
                         data_transfer_weights[(i, j)] = weight
             

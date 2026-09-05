@@ -172,6 +172,7 @@ class CloudEnv(gym.Env):
         )
 
         self.server_farm.set_communication_mode()
+        self.job_manager.initialize(t=0)
 
         self.reward_buffer = []
         self.current_time = 0.0
@@ -206,76 +207,35 @@ class CloudEnv(gym.Env):
             (task.id, task.job_id): task
             for task in self.ready_tasks
         }
-
     def step(self, action):
-        self.last_agent_action = self.current_time
-        self.job_manager.pending_tasks = 0
+            self.last_agent_action = self.current_time
 
-        action = np.asarray(
-            action,
-            dtype=np.int64,
-        )
+            action = np.asarray(action, dtype=np.int64)
 
-        if not all(
-            task.status == 1
-            for task in self.current_batch
-        ):
+            if all(task.status == 1 for task in self.current_batch):
+                self._decision_tasks = list(self.current_batch)
+                self._decision_actions = action[: self.batch_size].copy()
+
+                for index, task in enumerate(self.current_batch):
+                    server_id = int(self._decision_actions[index])
+                    if server_id in self.server_farm.servers:
+                        server = self.server_farm.servers[server_id]
+                        if server.first_check(task):
+                            server.add_task_to_queue(task, t=self.current_time)
             return self._advance_one_tick()
 
-        self._decision_tasks = list(
-            self.current_batch
-        )
-
-        self._decision_actions = action[
-            : self.batch_size
-        ].copy()
-
-        for index, task in enumerate(
-            self.current_batch
-        ):
-            server_id = int(
-                self._decision_actions[index]
-            )
-
-            if (
-                server_id
-                not in self.server_farm.servers
-            ):
-                continue
-
-            server = self.server_farm.servers[
-                server_id
-            ]
-
-            if server.first_check(task):
-                server.add_task_to_queue(
-                    task,
-                    t=self.current_time,
-                )
-
-        return self._advance_one_tick()
-
     def _advance_one_tick(self):
+        t = self.current_time
         self.job_manager.pending_tasks = 0
-        done = False
 
-        for server in (
-            self.server_farm.servers.values()
-        ):
-            server.execute_tasks(
-                self.current_time
-            )
-
-        for server in (
-            self.server_farm.servers.values()
-        ):
-            self.job_manager.pending_tasks += (
-                len(list(server.task_queue))
-            )
+        for server in self.server_farm.servers.values():
+            server.execute_tasks(t)
+        for server in self.server_farm.servers.values():
+            self.job_manager.pending_tasks += len(list(server.task_queue))
 
         self.job_manager.update_running_tasks()
         self.job_manager.update_finished_jobs()
-
+        self.current_time += self.time_step
         self.server_farm.update_farm_state(
             t=self.current_time,
             time_step=self.time_step,
@@ -287,15 +247,9 @@ class CloudEnv(gym.Env):
         )
 
         if self.network_overhead:
-            submitted_data = (
-                self.server_farm.submit_packets()
-            )
-
+            submitted_data = self.server_farm.submit_packets()
             if submitted_data:
-                self.network_manager.update_data_packets(
-                    submitted_data
-                )
-
+                self.network_manager.update_data_packets(submitted_data)
                 self.network_manager.resolve_routing()
 
             self.network_manager.distribute_data_payloads(
@@ -303,23 +257,13 @@ class CloudEnv(gym.Env):
                 self.time_step,
             )
 
-        self.current_time += self.time_step
-
-        self.job_manager.update_arrival_jobs(
-            self.current_time
-        )
-
-        self.ready_tasks = (
-            self.job_manager.update_ready_tasks()
-        )
-
+        self.job_manager.update_arrival_jobs(self.current_time)
+        self.ready_tasks = self.job_manager.update_ready_tasks()
         self.build_task_dict()
 
-        if not self.is_running():
-            done = True
-
+        done = not self.is_running()
         return done
-
+   
     def get_state(self):
         if self.is_scheduling_time():
             self.current_batch = (
