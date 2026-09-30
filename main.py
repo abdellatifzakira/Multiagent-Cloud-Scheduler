@@ -112,26 +112,22 @@ exp = Experiment(
             jobs=jobs,
             scenarios_edges=[],
             schedulers=[
-                #DQNAgent(
-                #    epsilon=1.0,
-                #    epsilon_decay=0.995,
-                #    seed=schedulers_seed,
-                #    buffer_capacity=10_000,
-                #    model_path = "models/No_DAG_DQN.pth",
-                #    resume_training=False),
-                #SequentialDQNAgent(
-                #            epsilon=1.0,
-                #            epsilon_decay=0.995,
-                #            seed=schedulers_seed,
-                #            buffer_capacity=10_000,
-                #            model_path = "models/No_DAG_SDQN.pth",
-                #            resume_training=False),
+                DQNAgent(
+                    epsilon=1.0,
+                    epsilon_decay=0.995,
+                    seed=schedulers_seed,
+                    buffer_capacity=10_000),
+                SequentialDQNAgent(
+                            epsilon=1.0,
+                            epsilon_decay=0.995,
+                            seed=schedulers_seed,
+                            buffer_capacity=10_000),
                 LeastLoadedScheduler(mode='CPU'),
                 #RoundRobinScheduler(),
                 #DataLocalityAwareScheduler(mode='NAIVE'),
                 #DataLocalityAwareScheduler(mode='BALANCED'),
                 #EnergyAwareScheduler(),
-                #RandomAgent(seed=schedulers_seed)
+                RandomAgent(seed=schedulers_seed)
                 
             ],
             time_step=0.005,
