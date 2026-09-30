@@ -408,7 +408,7 @@ class SequentialDQNAgent(Agent):
         self.action_space.seed(self.seed)
 
         self.servers_state_size = (
-            6 * self.num_servers
+            4 * self.num_servers
         )
 
         self.tasks_state_size = (
@@ -556,8 +556,8 @@ class SequentialDQNAgent(Agent):
                     current_cpu,
                     available_cpu,
                     queue_pressure,
-                    max_cpu,
-                    mean_cpu,
+                    #max_cpu,
+                    #mean_cpu,
                     effective_compute,
                 ]
             )
