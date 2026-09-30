@@ -221,7 +221,7 @@ class DQNAgent(Agent):
 
         self.action_space.seed(self.seed)
 
-        self.servers_state_size = 6 * self.num_servers
+        self.servers_state_size = 4 * self.num_servers
         self.tasks_state_size = self.task_token_dim * self.batch_size
         self.state_size = self.servers_state_size + self.tasks_state_size
 
@@ -281,11 +281,11 @@ class DQNAgent(Agent):
 
             if cpu_history.size == 0:
                 current_cpu = 0.0
-                max_cpu = 0.0
+                #max_cpu = 0.0
                 mean_cpu = 0.0
             else:
                 current_cpu = float(cpu_history[-1])
-                max_cpu = float(np.max(cpu_history))
+                #max_cpu = float(np.max(cpu_history))
                 mean_cpu = float(np.mean(cpu_history))
 
             available_cpu = (
@@ -303,8 +303,8 @@ class DQNAgent(Agent):
                     current_cpu,
                     available_cpu,
                     queue_pressure,
-                    max_cpu,
-                    mean_cpu,
+                    #max_cpu,
+                    #mean_cpu,
                     effective_compute,
                 ]
             )
